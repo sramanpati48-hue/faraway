@@ -27,6 +27,12 @@ export interface VoiceTurnResponse {
   status: string;
   case_id: string;
   spoken_response: string;
+  text?: string;
+  action?: "none" | "ask_clarification" | "request_nyayguide" | "human_review";
+  requires_confirmation?: boolean;
+  assistance_type?: "document_support" | "office_navigation" | "complaint_filing_support" | "digital_assistance" | "other" | null;
+  safe_task_summary?: string | null;
+  escalation_reason?: string | null;
   resolution_status: string;
   active_agent: string;
   confidence_score: number;

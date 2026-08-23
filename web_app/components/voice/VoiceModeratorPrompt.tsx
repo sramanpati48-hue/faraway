@@ -26,7 +26,10 @@ import {
   sendVoiceAudioTurn,
   completeVoiceSession,
   VoiceSessionResponse,
+  VoiceTurnResponse,
 } from "@/lib/voice/livekitApi";
+import { NyayGuideDispatchCard } from "@/components/nyayguide/NyayGuideDispatchCard";
+import type { NyayGuideRequest } from "@/lib/nyayguideApi";
 import {
   getTTSProvider,
   TTSProvider,
@@ -185,6 +188,13 @@ function VoiceModeratorInner({
   >([]);
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const [escalationNotice, setEscalationNotice] = useState<any | null>(null);
+  const [nyayGuideConfirmation, setNyayGuideConfirmation] = useState<{
+    assistance_type: string;
+    safe_task_summary: string;
+    escalation_reason?: string;
+  } | null>(null);
+  const [textInput, setTextInput] = useState("");
+  const [isSendingText, setIsSendingText] = useState(false);
   const [currentScore, setCurrentScore] = useState<number>(
     contextBuildingResult?.context_building_confidence_score ||
     contextBuildingResult?.ai_verification_confidence ||
@@ -403,6 +413,85 @@ function VoiceModeratorInner({
     }
   };
 
+  const handleProcessTurnResult = async (turnRes: VoiceTurnResponse) => {
+    if (turnRes.status === "retry" || (!turnRes.user_transcript && !turnRes.spoken_response)) {
+      setSpeechNotice(
+        turnRes.spoken_response ||
+        "I didn't catch any speech. Please hold the microphone and speak clearly."
+      );
+      return;
+    }
+
+    const userText = turnRes.user_transcript || "";
+    if (userText) {
+      setSpokenMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          text: userText,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+        {
+          role: "assistant",
+          text: turnRes.spoken_response,
+          agent: turnRes.active_agent,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    } else {
+      setSpokenMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: turnRes.spoken_response,
+          agent: turnRes.active_agent,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    }
+
+    if (turnRes.confidence_score != null) setCurrentScore(turnRes.confidence_score);
+    if (turnRes.active_agent) setActiveSubAgent(turnRes.active_agent);
+
+    // Structured action handling
+    if (turnRes.action === "request_nyayguide" && turnRes.requires_confirmation) {
+      setNyayGuideConfirmation({
+        assistance_type: turnRes.assistance_type || "complaint_filing_support",
+        safe_task_summary:
+          turnRes.safe_task_summary ||
+          "Procedural hand-holding and assistance with the complaint filing process.",
+        escalation_reason: turnRes.escalation_reason || "User explicitly requested physical assistance",
+      });
+    } else if (turnRes.resolution_status === "escalate" && turnRes.handoff_packet) {
+      setEscalationNotice(turnRes.handoff_packet);
+    }
+
+    const turnProfile = turnRes.voice_profile
+      ? { ...voiceProfile, ...turnRes.voice_profile }
+      : voiceProfile;
+    await speakText(turnRes.spoken_response, turnProfile);
+  };
+
+  const handleSendTextTurn = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = textInput.trim();
+    if (!trimmed || isSendingText || isAgentSpeaking) return;
+
+    setTextInput("");
+    setIsSendingText(true);
+    setSpeechNotice(null);
+    try {
+      const turnRes = await sendVoiceTurn(caseId, trimmed);
+      turnRes.user_transcript = trimmed;
+      await handleProcessTurnResult(turnRes);
+    } catch (err: any) {
+      console.error("[Voice Moderator] Text turn error:", err);
+      setSpeechNotice("Failed to send message. Please try again.");
+    } finally {
+      setIsSendingText(false);
+    }
+  };
+
   const stopRecording = async () => {
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === "inactive") {
@@ -446,38 +535,7 @@ function VoiceModeratorInner({
 
       try {
         const turnRes = await sendVoiceAudioTurn(caseId, audioBlob, selectedLanguage || "en-IN");
-        if (turnRes.status === "retry" || !turnRes.user_transcript) {
-          setSpeechNotice(
-            turnRes.spoken_response ||
-            "I didn't catch any speech. Please hold the microphone and speak clearly."
-          );
-        } else if (turnRes.user_transcript) {
-          setSpokenMessages((prev) => [
-            ...prev,
-            {
-              role: "user",
-              text: turnRes.user_transcript!,
-              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            },
-            {
-              role: "assistant",
-              text: turnRes.spoken_response,
-              agent: turnRes.active_agent,
-              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            },
-          ]);
-
-          if (turnRes.confidence_score != null) setCurrentScore(turnRes.confidence_score);
-          if (turnRes.active_agent) setActiveSubAgent(turnRes.active_agent);
-          if (turnRes.resolution_status === "escalate" && turnRes.handoff_packet) {
-            setEscalationNotice(turnRes.handoff_packet);
-          }
-
-          const turnProfile = turnRes.voice_profile
-            ? { ...voiceProfile, ...turnRes.voice_profile }
-            : voiceProfile;
-          await speakText(turnRes.spoken_response, turnProfile);
-        }
+        await handleProcessTurnResult(turnRes);
       } catch (err: any) {
         console.error("[Voice Moderator] Voice turn error:", err);
         setSpeechNotice("Failed to transcribe audio. Please hold the microphone and try again.");
@@ -702,6 +760,44 @@ function VoiceModeratorInner({
             <div ref={conversationEndRef} />
           </div>
 
+          {/* NyayGuide Confirmation Card (Pre-Confirmation Triggered via Voice Action) */}
+          {nyayGuideConfirmation && (
+            <div className="pt-2 animate-in fade-in zoom-in-95 duration-300">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Review & Confirm Physical Assistance Request
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNyayGuideConfirmation(null);
+                    setSpeechNotice("You can continue with digital voice guidance.");
+                  }}
+                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <NyayGuideDispatchCard
+                caseId={caseId}
+                structuredReport={contextBuildingResult}
+                initialAssistanceType={nyayGuideConfirmation.assistance_type}
+                initialSafeTaskSummary={nyayGuideConfirmation.safe_task_summary}
+                onClose={() => {
+                  setNyayGuideConfirmation(null);
+                  setSpeechNotice("You can continue with digital voice guidance.");
+                }}
+                onRequestCreated={(req) => {
+                  console.log("[Voice Moderator] NyayGuide request created:", req.id);
+                }}
+                onRequestCancelled={() => {
+                  setNyayGuideConfirmation(null);
+                  setSpeechNotice("You can continue with digital voice guidance.");
+                }}
+              />
+            </div>
+          )}
+
           {/* Language Selector & Voice Interaction Controls */}
           <div className="flex flex-col items-center gap-3 pt-1">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -753,6 +849,25 @@ function VoiceModeratorInner({
                 ? "Voice Moderator is responding..."
                 : "Press & hold the microphone button to speak"}
             </p>
+
+            {/* Text input fallback */}
+            <form onSubmit={handleSendTextTurn} className="w-full max-w-md flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Type to voice moderator (e.g. I want physical assistance)..."
+                disabled={isRecording || isTranscribing || isSendingText || isAgentSpeaking}
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-[#00634B] focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+              <button
+                type="submit"
+                disabled={!textInput.trim() || isSendingText || isAgentSpeaking}
+                className="rounded-xl bg-[#00634B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#004D3C] disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                {isSendingText ? <Loader2 className="size-3.5 animate-spin" /> : "Send"}
+              </button>
+            </form>
           </div>
         </div>
       )}

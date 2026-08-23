@@ -23,6 +23,8 @@ interface NyayGuideDispatchCardProps {
   caseId: string;
   structuredReport?: any;
   initialRequest?: NyayGuideRequest | null;
+  initialAssistanceType?: string;
+  initialSafeTaskSummary?: string;
   onClose?: () => void;
   onRequestCreated?: (request: NyayGuideRequest) => void;
   onRequestCancelled?: () => void;
@@ -32,6 +34,8 @@ export function NyayGuideDispatchCard({
   caseId,
   structuredReport,
   initialRequest,
+  initialAssistanceType,
+  initialSafeTaskSummary,
   onClose,
   onRequestCreated,
   onRequestCancelled,
@@ -40,7 +44,14 @@ export function NyayGuideDispatchCard({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [request, setRequest] = useState<NyayGuideRequest | null>(initialRequest || null);
   const [showPreConfirm, setShowPreConfirm] = useState(!initialRequest);
-  const [assistanceType, setAssistanceType] = useState<string>("document_support");
+  const [assistanceType, setAssistanceType] = useState<string>(
+    initialAssistanceType || "document_support"
+  );
+  const [taskSummary] = useState<string>(
+    initialSafeTaskSummary ||
+      structuredReport?.summary ||
+      `Practical procedural assistance for ${structuredReport?.incident_type || "your case"}.`
+  );
   const [locationConsent, setLocationConsent] = useState(true);
   const [preferredFemale, setPreferredFemale] = useState(
     Boolean(
@@ -236,6 +247,16 @@ export function NyayGuideDispatchCard({
                 >
                   Sign In →
                 </button>
+              </div>
+            )}
+
+            {taskSummary && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/40">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                  <FileText className="size-3.5 text-[#00634B]" />
+                  <span>Assistance Summary</span>
+                </div>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-sans">{taskSummary}</p>
               </div>
             )}
 

@@ -51,7 +51,6 @@ SENSITIVE_CASE_SYSTEM_PROMPT: str = (
 _SENSITIVE_REQUIRED_SENTENCE = "You don't have to explain everything right now."
 
 # ── Resolution outcome phrase matchers ────────────────────────────────────────
-# Conservative normalized list — neutral acknowledgements must NOT be treated as failure.
 _UNRESOLVED_PHRASES: Tuple[str, ...] = (
     "that did not help",
     "that didn't help",
@@ -89,8 +88,191 @@ _RESOLVED_PHRASES: Tuple[str, ...] = (
     "i'm clear now",
 )
 
+import re
+from enum import Enum
+from pydantic import BaseModel, Field
 
-# ── Shared Conversation State ──────────────────────────────────────────────────
+# ── Validated Voice Agent Action Contract ─────────────────────────────────────
+class ActionType(str, Enum):
+    NONE = "none"
+    ASK_CLARIFICATION = "ask_clarification"
+    REQUEST_NYAYGUIDE = "request_nyayguide"
+    HUMAN_REVIEW = "human_review"
+
+class AssistanceType(str, Enum):
+    DOCUMENT_SUPPORT = "document_support"
+    OFFICE_NAVIGATION = "office_navigation"
+    COMPLAINT_FILING_SUPPORT = "complaint_filing_support"
+    DIGITAL_ASSISTANCE = "digital_assistance"
+    OTHER = "other"
+
+class VoiceAgentAction(BaseModel):
+    message: str = ""
+    action: ActionType = ActionType.NONE
+    requires_confirmation: bool = False
+    assistance_type: Optional[AssistanceType] = None
+    safe_task_summary: Optional[str] = None
+    escalation_reason: Optional[str] = None
+
+# ── Explicit Intent Detection Matchers ─────────────────────────────────────────
+_NYAYGUIDE_INTENT_PHRASES: Tuple[str, ...] = (
+    "i want physical assistance",
+    "want physical assistance",
+    "need physical assistance",
+    "physical assistance",
+    "physical help",
+    "physically help",
+    "on-ground help",
+    "on ground help",
+    "on-ground assistance",
+    "on ground assistance",
+    "someone to accompany me",
+    "accompany me",
+    "connect me to a nyayguide",
+    "connect me to nyayguide",
+    "request a nyayguide",
+    "request nyayguide",
+    "i need a nyayguide",
+    "need a nyayguide",
+    "want a nyayguide",
+    "help going to the police station",
+    "help me go to the police station",
+    "go to the police station with me",
+    "someone to help me file this",
+    "someone to help me file",
+    "help me file this",
+    "help me file the complaint",
+    "help me file the fir",
+    "i need hand-holding",
+    "i need hand holding",
+    "need handholding",
+    "hand-holding",
+    "hand holding",
+    "handholding",
+    "in-person help",
+    "in person help",
+    "in person assistance",
+    "ground support",
+    "ground assistance",
+    "mujhe physical help chahiye",
+    "physical madad",
+    "saath chalne ke liye koi",
+    "police station chalne me madad",
+    "form bharne me physical help",
+)
+
+_HUMAN_MODERATOR_PHRASES: Tuple[str, ...] = (
+    "human legal moderator",
+    "legal moderator",
+    "human moderator",
+    "human lawyer",
+    "human review",
+    "speak to a human moderator",
+    "talk to a legal moderator",
+    "connect me to a legal moderator",
+    "i want a human legal moderator",
+    "i want a human moderator",
+    "lawyer review",
+)
+
+_EMERGENCY_PHRASES: Tuple[str, ...] = (
+    "immediate danger",
+    "in immediate danger",
+    "kill me",
+    "threat to life",
+    "suicide",
+    "hurt me",
+    "trapped",
+    "police right now",
+    "emergency right now",
+)
+
+def infer_assistance_type(lower_text: str, incident_type: str = "") -> AssistanceType:
+    """Derives the most appropriate AssistanceType from user utterance and case incident type."""
+    if any(k in lower_text for k in ["police station", "station", "office", "court", "go to", "accompany", "navigate", "visit", "reach"]):
+        return AssistanceType.OFFICE_NAVIGATION
+    if any(k in lower_text for k in ["file", "fir", "complaint", "submission", "submit", "lodge", "report", "draft fir"]):
+        return AssistanceType.COMPLAINT_FILING_SUPPORT
+    if any(k in lower_text for k in ["document", "paper", "papers", "form", "forms", "organize", "draft", "xerox", "affidavit"]):
+        return AssistanceType.DOCUMENT_SUPPORT
+    if any(k in lower_text for k in ["digital", "online", "portal", "website", "app", "login", "upload", "cyber portal"]):
+        return AssistanceType.DIGITAL_ASSISTANCE
+    if any(k in (incident_type or "").lower() for k in ["complaint", "fir", "harass", "threat", "police"]):
+        return AssistanceType.COMPLAINT_FILING_SUPPORT
+    return AssistanceType.DOCUMENT_SUPPORT
+
+def generate_safe_task_summary(incident_type: str, assistance_type: AssistanceType) -> str:
+    """Generates a short, non-graphic, PII-free safe task summary for pre-confirmation."""
+    cleaned_type = (incident_type or "Legal Inquiry").strip()
+    if assistance_type == AssistanceType.OFFICE_NAVIGATION:
+        return f"Accompaniment and procedural navigation to local office/station for {cleaned_type}."
+    elif assistance_type == AssistanceType.COMPLAINT_FILING_SUPPORT:
+        return f"Procedural hand-holding and assistance with complaint/form submission for {cleaned_type}."
+    elif assistance_type == AssistanceType.DOCUMENT_SUPPORT:
+        return f"Assistance with organizing documents and procedural paperwork for {cleaned_type}."
+    elif assistance_type == AssistanceType.DIGITAL_ASSISTANCE:
+        return f"Assistance with digital legal portal navigation and form filling for {cleaned_type}."
+    return f"Practical procedural on-ground assistance for {cleaned_type}."
+
+def detect_voice_action_intent(
+    user_text: str,
+    context: Optional[Dict[str, Any]] = None,
+    risk_flags: Optional[List[str]] = None,
+) -> VoiceAgentAction:
+    """
+    Deterministic pre-check that evaluates user utterance before general LLM response.
+    Returns validated VoiceAgentAction contract with fallback to ActionType.NONE on invalid.
+    """
+    try:
+        raw_text = (user_text or "").strip()
+        cleaned = re.sub(r"[^\w\s]", " ", raw_text.lower())
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        raw_lower = raw_text.lower()
+        incident_type = (context or {}).get("incident_type") or "General Inquiry"
+
+        # 1. Emergency safety check
+        if any(phrase in raw_lower or phrase in cleaned for phrase in _EMERGENCY_PHRASES):
+            return VoiceAgentAction(
+                message="Your safety is our top priority. If you are in immediate danger, please contact local emergency services immediately (Dial 112 in India).",
+                action=ActionType.HUMAN_REVIEW,
+                requires_confirmation=False,
+                escalation_reason="Immediate emergency / danger expressed by user",
+            )
+
+        # 2. Explicit Physical Assistance / NyayGuide intent
+        if any(phrase in raw_lower or phrase in cleaned for phrase in _NYAYGUIDE_INTENT_PHRASES):
+            ass_type = infer_assistance_type(raw_lower, incident_type)
+            summary = generate_safe_task_summary(incident_type, ass_type)
+            return VoiceAgentAction(
+                message="",
+                action=ActionType.REQUEST_NYAYGUIDE,
+                requires_confirmation=True,
+                assistance_type=ass_type,
+                safe_task_summary=summary,
+                escalation_reason="User explicitly requested physical assistance",
+            )
+
+        # 3. Explicit Human Legal Moderator Review intent
+        if any(phrase in raw_lower or phrase in cleaned for phrase in _HUMAN_MODERATOR_PHRASES):
+            return VoiceAgentAction(
+                message="I am connecting you with our human legal moderator queue for specialized procedural review.",
+                action=ActionType.HUMAN_REVIEW,
+                requires_confirmation=True,
+                escalation_reason="User requested human legal moderator review",
+            )
+
+        return VoiceAgentAction(
+            message="",
+            action=ActionType.NONE,
+            requires_confirmation=False,
+        )
+    except Exception as err:
+        print(f"Warning: detect_voice_action_intent error: {err}")
+        return VoiceAgentAction(
+            message="",
+            action=ActionType.NONE,
+            requires_confirmation=False,
+        )
 
 @dataclass
 class ConversationState:
@@ -383,12 +565,12 @@ class EscalationAgent:
         """
         lower = user_text.lower()
 
-        # (a) Explicit human / NyayGuide / emergency request — highest priority
+        # (a) Explicit human legal moderator or emergency request — highest priority
         human_request_phrases = (
             "need a human", "want a human", "speak to a human", "talk to a human",
             "need a person", "want a person", "connect me to a person",
-            "nyayguide", "legal moderator", "human moderator", "real person",
-            "talk to someone", "speak to someone", "connect me to",
+            "legal moderator", "human moderator", "real person",
+            "talk to someone", "speak to someone",
             "danger", "kill me", "threat", "suicide", "police now",
             "urgent help", "hurt me", "trapped", "emergency",
         )
@@ -501,21 +683,101 @@ class VoiceModeratorAgentWorker:
 
     async def process_user_turn(self, user_text: str) -> Dict[str, Any]:
         """
-        Executes one reasoning turn across cooperating sub-agents.
+        Executes one reasoning turn across cooperating sub-agents with validated action contract.
 
-        Turn order (after greeting turn):
-          1. Update transcript/state
-          2. VerificationAgent: silently updates confidence and extracts facts
-          3. Evaluate/maintain failed-resolution counter
-          4. EscalationAgent: check all 4 conditions using updated confidence
-          5. If escalated: return escalation result (no SupportAgent call)
-          6. SupportAgent: formulate response with legal context
+        Turn order:
+          1. Increment turn count & append utterance
+          2. Evaluate deterministic action intent (detect_voice_action_intent)
+          3. If action is REQUEST_NYAYGUIDE:
+             - Formulate SupportAgent confirmation response
+             - Return structured action with requires_confirmation=True (never auto-dispatch!)
+          4. If action is HUMAN_REVIEW and emergency:
+             - Formulate emergency EscalationAgent response
+          5. If first turn (and no special intent):
+             - Return context-aware greeting
+          6. Sub-agent reasoning:
+             - VerificationAgent: updates confidence and facts
+             - Check escalation triggers (sensitive flag, low confidence, repeated unresolved)
+             - SupportAgent: formulate response with legal context
         """
         # 1. Increment turn count at the very start of each genuine user turn
         self.state.turn_count += 1
         self.state.add_utterance("user", user_text)
 
-        # 2. First turn: return personalized greeting; skip sub-agent pipeline
+        # 2. Check deterministic action intent first (Physical Assistance / Emergency / Human Review)
+        action_contract = detect_voice_action_intent(
+            user_text,
+            context=self.state.context_building or {},
+            risk_flags=self.state.risk_flags,
+        )
+
+        # 3. Handle explicit Physical Assistance / NyayGuide intent
+        if action_contract.action == ActionType.REQUEST_NYAYGUIDE:
+            self.state.active_agent = "SupportAgent"
+            is_sensitive = "sensitive" in self.state.risk_flags
+            spoken = (
+                "I understand that you want practical, on-ground assistance. "
+                "I can prepare a NyayGuide request for help with the complaint process. "
+                "Please review and confirm the request before we search for a nearby NyayGuide."
+            )
+            if is_sensitive and self.state.turn_count <= 2:
+                if _SENSITIVE_REQUIRED_SENTENCE not in spoken:
+                    spoken = f"{_SENSITIVE_REQUIRED_SENTENCE} {spoken}"
+
+            self.state.add_utterance("assistant", spoken, "SupportAgent")
+            self.state.log_decision(
+                "SupportAgent",
+                "nyayguide_intent_detected",
+                "User explicitly requested physical assistance; prepared confirmation action.",
+            )
+            self._last_was_support_resolution = False
+            self._persist_current_state()
+
+            return {
+                "status": "success",
+                "spoken_response": spoken,
+                "text": spoken,
+                "action": action_contract.action.value,
+                "requires_confirmation": True,
+                "assistance_type": action_contract.assistance_type.value if action_contract.assistance_type else "complaint_filing_support",
+                "safe_task_summary": action_contract.safe_task_summary,
+                "escalation_reason": action_contract.escalation_reason,
+                "resolution_status": self.state.resolution_status,
+                "active_agent": "SupportAgent",
+                "confidence_score": self.state.confidence_score,
+                "voice_profile": self.state.get_voice_profile(),
+                "state": self.state.to_dict(),
+            }
+
+        # 4. Handle Emergency Intent
+        if action_contract.action == ActionType.HUMAN_REVIEW and not action_contract.requires_confirmation:
+            self.state.active_agent = "EscalationAgent"
+            spoken = action_contract.message or "Your safety is our top priority. If you are in immediate danger, please contact local emergency services immediately (Dial 112 in India)."
+            self.state.add_utterance("assistant", spoken, "EscalationAgent")
+            self.state.log_decision(
+                "EscalationAgent",
+                "emergency_escalation",
+                action_contract.escalation_reason or "Emergency condition triggered.",
+            )
+            self._last_was_support_resolution = False
+            self._persist_current_state()
+            return {
+                "status": "success",
+                "spoken_response": spoken,
+                "text": spoken,
+                "action": ActionType.HUMAN_REVIEW.value,
+                "requires_confirmation": False,
+                "assistance_type": None,
+                "safe_task_summary": None,
+                "escalation_reason": action_contract.escalation_reason,
+                "resolution_status": "escalate",
+                "active_agent": "EscalationAgent",
+                "confidence_score": self.state.confidence_score,
+                "voice_profile": self.state.get_voice_profile(),
+                "state": self.state.to_dict(),
+            }
+
+        # 5. First turn: return personalized greeting; skip sub-agent pipeline if general conversation
         if self.state.turn_count == 1:
             greeting = self._build_first_turn_greeting()
             self.state.active_agent = "VoiceModerator"
@@ -529,6 +791,12 @@ class VoiceModeratorAgentWorker:
             return {
                 "status": "success",
                 "spoken_response": greeting,
+                "text": greeting,
+                "action": ActionType.NONE.value,
+                "requires_confirmation": False,
+                "assistance_type": None,
+                "safe_task_summary": None,
+                "escalation_reason": None,
                 "resolution_status": self.state.resolution_status,
                 "active_agent": "VoiceModerator",
                 "confidence_score": self.state.confidence_score,
@@ -536,15 +804,13 @@ class VoiceModeratorAgentWorker:
                 "state": self.state.to_dict(),
             }
 
-        # 3. Maintain failed-resolution counter based on current user input
+        # 6. Maintain failed-resolution counter based on current user input
         self._evaluate_resolution_state(user_text)
 
         # is_agent_speaking is a REST-compatibility flag for turn-based barge-in awareness.
-        # It does NOT implement true streaming audio cancellation; the REST model delivers
-        # complete responses and cannot interrupt mid-stream.
         self.state.is_agent_speaking = True
         try:
-            # 4. VerificationAgent: silent background pass — updates confidence/facts
+            # 7. VerificationAgent: silent background pass — updates confidence/facts
             self.state.active_agent = "VerificationAgent"
             _verify_msg, new_score = await self.verification_agent.evaluate_and_respond(user_text)
             self.state.confidence_score = new_score
@@ -554,7 +820,7 @@ class VoiceModeratorAgentWorker:
                 "timestamp": time.time(),
             })
 
-            # 5. EscalationAgent: check all 4 conditions using updated confidence
+            # 8. EscalationAgent: check all 4 conditions using updated confidence
             should_escalate, escalation_reason = self.escalation_agent.check_escalation_triggers(
                 user_text
             )
@@ -562,10 +828,8 @@ class VoiceModeratorAgentWorker:
                 self.state.active_agent = "EscalationAgent"
                 self.state.escalation_reason = escalation_reason
                 packet = await self.escalation_agent.build_handoff_packet(escalation_reason)
-                await self.escalation_agent.execute_nyayguide_handoff(packet)
                 spoken = (
-                    "I am immediately connecting your case with a dedicated Nyay Guide human specialist "
-                    "so you receive direct, personalized support. "
+                    "I have flagged your case for our specialized human moderator review team so you receive direct support. "
                     "Everything we discussed has been securely preserved."
                 )
                 self.state.add_utterance("assistant", spoken, "EscalationAgent")
@@ -574,6 +838,12 @@ class VoiceModeratorAgentWorker:
                 return {
                     "status": "success",
                     "spoken_response": spoken,
+                    "text": spoken,
+                    "action": ActionType.HUMAN_REVIEW.value,
+                    "requires_confirmation": True if "human" in str(escalation_reason).lower() else False,
+                    "assistance_type": None,
+                    "safe_task_summary": None,
+                    "escalation_reason": escalation_reason,
                     "resolution_status": "escalate",
                     "active_agent": "EscalationAgent",
                     "confidence_score": self.state.confidence_score,
@@ -582,16 +852,21 @@ class VoiceModeratorAgentWorker:
                     "state": self.state.to_dict(),
                 }
 
-            # 6. SupportAgent: respond with legal context
+            # 9. SupportAgent: respond with legal context
             self.state.active_agent = "SupportAgent"
             support_msg = await self.support_agent.evaluate_and_respond(user_text)
-            # Mark that a concrete SupportAgent resolution attempt was made this turn
             self._last_was_support_resolution = True
             self.state.add_utterance("assistant", support_msg, "SupportAgent")
             self._persist_current_state()
             return {
                 "status": "success",
                 "spoken_response": support_msg,
+                "text": support_msg,
+                "action": ActionType.NONE.value,
+                "requires_confirmation": False,
+                "assistance_type": None,
+                "safe_task_summary": None,
+                "escalation_reason": None,
                 "resolution_status": self.state.resolution_status,
                 "active_agent": "SupportAgent",
                 "confidence_score": self.state.confidence_score,
