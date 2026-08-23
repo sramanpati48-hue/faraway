@@ -1,0 +1,13 @@
+# Optional Cloud Build config (image tag via substitutions).
+# gcloud builds submit deploy/qwen-cloudrun --config=deploy/qwen-cloudrun/cloudbuild.yaml \
+#   --substitutions=_IMAGE=REGION-docker.pkg.dev/PROJECT/nyaysahayak/nyaysahayak-qwen:latest
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
+substitutions:
+  _IMAGE: asia-south1-docker.pkg.dev/PROJECT/nyaysahayak/nyaysahayak-qwen:latest
+options:
+  machineType: E2_HIGHCPU_8

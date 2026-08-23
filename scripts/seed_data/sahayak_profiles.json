@@ -1,0 +1,72 @@
+[
+  {
+    "uid": "seed_delhi_guide_001",
+    "name": "Anita Sharma",
+    "email": "anita.sharma.delhi.sahayak@nyaysahayak.in",
+    "contact_number": "+91-9830012001",
+    "location": "Pitampura, Delhi",
+    "occupation": "Community Legal Volunteer",
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "bio": "Guides victims through complaint filing and local legal aid navigation.",
+    "avatar": "https://images.unsplash.com/photo-1541534401786-2077eed87a72?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "Mon-Sat 9AM-5PM",
+    "rating": 4.8,
+    "cases_resolved": 142
+  },
+  {
+    "uid": "seed_delhi_guide_002",
+    "name": "Kavya Malhotra",
+    "email": "kavya.malhotra.delhi.sahayak@nyaysahayak.in",
+    "contact_number": "+91-9830012002",
+    "location": "Mayur Vihar, Delhi",
+    "occupation": "Women Support Facilitator",
+    "languages": [
+      "Hindi",
+      "English",
+      "Punjabi"
+    ],
+    "bio": "Supports women with documentation, counselling referrals, and legal awareness.",
+    "avatar": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "Mon-Fri 10AM-6PM",
+    "rating": 4.9,
+    "cases_resolved": 167
+  },
+  {
+    "uid": "seed_delhi_guide_003",
+    "name": "Reema Khan",
+    "email": "reema.khan.delhi.sahayak@nyaysahayak.in",
+    "contact_number": "+91-9830012003",
+    "location": "Jamia Nagar, Delhi",
+    "occupation": "Field Nyay Guide",
+    "languages": [
+      "Hindi",
+      "English",
+      "Urdu"
+    ],
+    "bio": "Helps with FIR process orientation and social support coordination.",
+    "avatar": "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "Daily 8AM-4PM",
+    "rating": 4.7,
+    "cases_resolved": 131
+  },
+  {
+    "uid": "seed_delhi_guide_004",
+    "name": "Sunita Rao",
+    "email": "sunita.rao.delhi.sahayak@nyaysahayak.in",
+    "contact_number": "+91-9830012004",
+    "location": "Janakpuri, Delhi",
+    "occupation": "Crisis Support Volunteer",
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "bio": "Assists urgent victims with immediate institutional contacts and handholding.",
+    "avatar": "https://images.unsplash.com/photo-1506863530036-1efeddceb993?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "24x7 On-Call",
+    "rating": 4.9,
+    "cases_resolved": 189
+  }
+]

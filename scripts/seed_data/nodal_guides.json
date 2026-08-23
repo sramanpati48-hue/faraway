@@ -1,0 +1,92 @@
+[
+  {
+    "name": " Sunita Devi",
+    "state": "Bihar",
+    "location": "Gram Nyayalaya, Patna Rural",
+    "occupation": "Gram Nyayalaya Nodal Officer",
+    "bio": "Handles maintenance claims, crop theft cases and workers' wage disputes across Patna division.",
+    "avatar": "https://ui-avatars.com/api/?name=Sunita+Devi&background=2d5a4e&color=fff&size=128",
+    "contact_number": "+91-9939001234",
+    "email": "sunita.devi.ng@nyaysahayak.in",
+    "availability": "Available",
+    "rating": 4.7,
+    "cases_resolved": 112,
+    "languages": [
+      "Hindi",
+      "Maithili",
+      "Bhojpuri",
+      "English"
+    ],
+    "lat_min": 24.29,
+    "lat_max": 27.52,
+    "lon_min": 83.32,
+    "lon_max": 88.3
+  },
+  {
+    "name": " Ramesh Yadav",
+    "state": "UP",
+    "location": "Gram Nyayalaya, Lucknow District",
+    "occupation": "Gram Nyayalaya Nodal Officer",
+    "bio": "Specialises in agricultural wage disputes, land boundary conflicts and village-level mediation.",
+    "avatar": "https://ui-avatars.com/api/?name=Ramesh+Yadav&background=2d5a4e&color=fff&size=128",
+    "contact_number": "+91-9452001234",
+    "email": "ramesh.yadav.ng@nyaysahayak.in",
+    "availability": "Available",
+    "rating": 4.6,
+    "cases_resolved": 134,
+    "languages": [
+      "Hindi",
+      "Awadhi",
+      "English"
+    ],
+    "lat_min": 23.87,
+    "lat_max": 30.4,
+    "lon_min": 77.08,
+    "lon_max": 84.67
+  },
+  {
+    "name": "Mohan Oraon",
+    "state": "Jharkhand",
+    "location": "Gram Nyayalaya, Ranchi District",
+    "occupation": "Gram Nyayalaya Nodal Officer",
+    "bio": "Expert in tribal land rights, forest disputes and local wage conflict resolution in Jharkhand.",
+    "avatar": "https://ui-avatars.com/api/?name=Mohan+Oraon&background=2d5a4e&color=fff&size=128",
+    "contact_number": "+91-9431001234",
+    "email": "mohan.oraon.ng@nyaysahayak.in",
+    "availability": "Available",
+    "rating": 4.5,
+    "cases_resolved": 76,
+    "languages": [
+      "Hindi",
+      "Santali",
+      "Nagpuri",
+      "English"
+    ],
+    "lat_min": 21.97,
+    "lat_max": 25.32,
+    "lon_min": 83.32,
+    "lon_max": 87.98
+  },
+  {
+    "name": " Priya Sharma",
+    "state": "Delhi",
+    "location": "Rohini Court Complex, New Delhi",
+    "occupation": "Gram Nyayalaya Nodal Officer",
+    "bio": "Experienced in property disputes, domestic matters & small civil claims. Available Mon–Sat.",
+    "avatar": "https://ui-avatars.com/api/?name=Priya+Sharma&background=2d5a4e&color=fff&size=128",
+    "contact_number": "+91-9811001234",
+    "email": "priya.sharma.ng@nyaysahayak.in",
+    "availability": "Available",
+    "rating": 4.8,
+    "cases_resolved": 87,
+    "languages": [
+      "Hindi",
+      "Punjabi",
+      "English"
+    ],
+    "lat_min": 28.4,
+    "lat_max": 28.88,
+    "lon_min": 76.84,
+    "lon_max": 77.35
+  }
+]

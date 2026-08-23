@@ -1,0 +1,458 @@
+@import "tailwindcss";
+@import "../node_modules/maplibre-gl/dist/maplibre-gl.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-primary: #00634B;
+  --color-primary-hover: #014D3C;
+  --color-secondary: #004D3C;
+  --color-accent: #F57C00;
+  --color-background: #F8F9FA;
+  --color-sidebar-bg: #FFFFFF;
+  --color-text-main: #1A1A1A;
+  --color-text-muted: #666666;
+  --color-border: #E5E7EB;
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+@layer base {
+  body {
+    @apply antialiased bg-background text-foreground;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    scrollbar-gutter: stable;
+  }
+
+  /* Interactive affordance — semantic controls only (not labels, text, or layout) */
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"],
+  [role="button"][aria-disabled="true"],
+  select:disabled,
+  input:disabled,
+  input[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+/* Composer textareas: hide Windows up/down scrollbar buttons over the send control */
+.composer-scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.composer-scroll::-webkit-scrollbar,
+.composer-scroll::-webkit-scrollbar-button,
+.composer-scroll::-webkit-scrollbar-thumb,
+.composer-scroll::-webkit-scrollbar-track,
+.composer-scroll::-webkit-scrollbar-corner {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes suggest-nudge {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15% { transform: translateX(-3px) rotate(-6deg); }
+  30% { transform: translateX(3px) rotate(6deg); }
+  45% { transform: translateX(-2px) rotate(-4deg); }
+  60% { transform: translateX(2px) rotate(4deg); }
+  75% { transform: translateX(-1px) rotate(-2deg); }
+}
+.animate-suggest-nudge {
+  animation: suggest-nudge 0.7s ease-in-out 0s 3;
+}
+
+/* Custom Scrollbar for Logs */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.4);
+}
+
+/* Theme-specific scrollbars */
+.custom-scrollbar-slate::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar-slate::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar-slate::-webkit-scrollbar-thumb {
+  background-color: rgba(71, 85, 105, 0.4);
+  border-radius: 20px;
+}
+
+.custom-scrollbar-slate::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(71, 85, 105, 0.6);
+}
+
+.custom-scrollbar-emerald::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar-emerald::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar-emerald::-webkit-scrollbar-thumb {
+  background-color: rgba(16, 185, 129, 0.2);
+  border-radius: 20px;
+}
+
+.custom-scrollbar-emerald::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(16, 185, 129, 0.4);
+}
+
+/* Markdown Styles */
+.prose-invert {
+  --tw-prose-body: #94a3b8;
+  --tw-prose-headings: #f1f5f9;
+  --tw-prose-lead: #cbd5e1;
+  --tw-prose-links: #38bdf8;
+  --tw-prose-bold: #f1f5f9;
+  --tw-prose-counters: #94a3b8;
+  --tw-prose-bullets: #475569;
+  --tw-prose-hr: #334155;
+  --tw-prose-quotes: #f1f5f9;
+  --tw-prose-quote-borders: #334155;
+  --tw-prose-captions: #94a3b8;
+  --tw-prose-code: #f1f5f9;
+  --tw-prose-pre-code: #e2e8f0;
+  --tw-prose-pre-bg: #1e293b;
+  --tw-prose-th-borders: #334155;
+  --tw-prose-td-borders: #1e293b;
+}
+
+/* Red and Black Animated Button */
+.btn-rb-animated {
+  background: linear-gradient(-45deg, #000000, #E51515, #000000, #E51515);
+  background-size: 400% 400%;
+  animation: gradient-animation 6s ease infinite;
+  @apply transition-transform duration-300 hover:scale-105 active:scale-95;
+}
+
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(0.985 0.002 155);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.42 0.075 163);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Motion utilities — press feedback, hover cards, reduced motion */
+@layer utilities {
+  .motion-press {
+    cursor: pointer;
+    transition:
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .motion-press:active {
+    transform: scale(0.97);
+  }
+
+  .motion-press-subtle {
+    cursor: pointer;
+  }
+
+  .motion-press-subtle:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .motion-hover-card {
+      transition:
+        border-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+        box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .motion-hover-card:hover {
+      border-color: color-mix(in oklab, var(--color-primary) 25%, var(--color-border));
+      box-shadow:
+        0 4px 6px -1px rgb(0 0 0 / 0.08),
+        0 2px 4px -2px rgb(0 0 0 / 0.06);
+    }
+
+    .motion-hover-lift:hover {
+      transform: translateY(-1px);
+    }
+  }
+
+  .motion-enter-fade {
+    animation: motion-fade-in 350ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .chat-shimmer {
+    color: transparent;
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--muted-foreground) 30%, transparent) 0%,
+      color-mix(in oklch, var(--muted-foreground) 80%, transparent) 50%,
+      color-mix(in oklch, var(--muted-foreground) 30%, transparent) 100%
+    );
+    background-size: 200% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: chat-shimmer 2.2s ease-in-out infinite;
+  }
+
+  .chat-scroll-fade-b {
+    mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
+  }
+
+  @keyframes chat-shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+
+  @keyframes motion-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes preview-chat-user {
+    from {
+      opacity: 0;
+      transform: translate3d(10px, 6px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes preview-chat-ai {
+    from {
+      opacity: 0;
+      transform: translate3d(-10px, 6px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes preview-typing-dot {
+    0%,
+    80%,
+    100% {
+      opacity: 0.28;
+      transform: translateY(0);
+    }
+    40% {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+  }
+
+  .preview-chat-user {
+    animation: preview-chat-user 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .preview-chat-ai {
+    animation: preview-chat-ai 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .preview-typing-dot {
+    animation: preview-typing-dot 1s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-press:active,
+    .motion-press-subtle:active {
+      transform: none;
+    }
+
+    .motion-enter-fade {
+      animation: motion-fade-in-reduced 200ms ease both;
+    }
+
+    .chat-shimmer {
+      animation: none;
+      color: var(--muted-foreground);
+      background-image: none;
+    }
+
+    @keyframes motion-fade-in-reduced {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .motion-hover-lift:hover {
+      transform: none;
+    }
+
+    .preview-chat-user,
+    .preview-chat-ai,
+    .preview-typing-dot {
+      animation: none;
+    }
+  }
+}

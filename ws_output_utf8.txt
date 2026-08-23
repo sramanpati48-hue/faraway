@@ -1,0 +1,33 @@
+﻿Connecting to ws://localhost:8000/ws/moderator...
+Γ£à Connected to Legal Moderator WebSocket!
+Waiting for new case broadcasts...
+
+==================================
+≡ƒÜ¿ NEW HIGH CRITICALITY CASE SECURED
+==================================
+Event Type: new_case
+User ID: ws_test_user
+Incident Type: Financial Fraud
+Structured Report JSON:
+{
+  "incident_type": "Financial Fraud",
+  "risk_level": "High",
+  "cognizable": true,
+  "is_complex_mlat": true,
+  "fraud_under_10k": false,
+  "summary": "The incident involves a financial fraud by an international syndicate, with potential legal implications under various laws including IT Act and IPC. Immediate action is required to report the incident and prevent further loss.",
+  "statutory_sections": [
+    "IT Act Section 66D",
+    "IPC Section 420",
+    "IPC Section 471",
+    "Extradition Act, 1962",
+    "The Mutual Legal Assistance in Criminal Matters Act"
+  ],
+  "checklist": [
+    "Call 1930 immediately to report the incident",
+    "Visit Cyber Crime Cell in your location to file a complaint",
+    "Gather evidence and file a complaint online at www.cybercrime.gov.in",
+    "Inform your bank about the fraudulent transactions and request them to freeze your accounts"
+  ],
+  "criticality": "High Criticality"
+}

@@ -1,0 +1,115 @@
+﻿
+--- TEST 1: Moderate Criticality (< 10k fraud) ---
+
+==================================================
+User Query: I lost 5000 rupees in an online shopping scam.
+==================================================
+
+≡ƒöì SUPERVISOR AGENT
+   Analyzing query intent...
+   ≡ƒæë ROUTING TO: CYBER
+
+--- Node Executed: supervisor ---
+Next Step Flagged: cyber
+
+≡ƒöÉ CYBER AGENT ACTIVATED
+   Generating legal advice for cyber crime...
+≡ƒöì Searching VectorDB for: 'I lost 5000 rupees in an online shopping scam.' in ['laws', 'mlats'] with filter None
+   Context Retrieved: 0 documents
+Γ¥î Geocoding error: 'lat'
+
+--- Node Executed: cyber ---
+Next Step Flagged: report_generator
+
+Final Response Snippet (First 200 chars):
+## ≡ƒÜ¿ Immediate Action Required
+> **Critical**: If financial loss occurred, call **1930** immediately to report the incident and try to **freeze your account** to prevent further transactions.
+- If loc...
+
+≡ƒô¥ REPORT GENERATOR AGENT ACTIVATED
+   Standardizing output and generating actions...
+
+--- Node Executed: report_generator ---
+Structured Report Criticality: Moderate Criticality (Small Matter)
+Next Step Flagged: __end__
+
+Final Response Snippet (First 200 chars):
+## ≡ƒÜ¿ Immediate Action Required
+> **Critical**: If financial loss occurred, call **1930** immediately to report the incident and try to **freeze your account** to prevent further transactions.
+- If loc...
+
+--- TEST 2: High Criticality (MLAT / International / High Amount) ---
+
+==================================================
+User Query: I was scammed out of 50 lakhs by an international syndicate operating abroad with fake documents.
+==================================================
+
+≡ƒöì SUPERVISOR AGENT
+   Analyzing query intent...
+   ≡ƒæë ROUTING TO: CYBER
+
+--- Node Executed: supervisor ---
+Next Step Flagged: cyber
+
+≡ƒöÉ CYBER AGENT ACTIVATED
+   Generating legal advice for cyber crime...
+≡ƒöì Searching VectorDB for: 'I was scammed out of 50 lakhs by an international syndicate operating abroad with fake documents.' in ['laws', 'mlats'] with filter None
+   Context Retrieved: 0 documents
+Γ¥î Geocoding error: 'lat'
+
+--- Node Executed: cyber ---
+Next Step Flagged: report_generator
+
+Final Response Snippet (First 200 chars):
+## ≡ƒÜ¿ Immediate Action Required
+> **Critical**: If financial loss occurred, call **1930** immediately to report the incident and attempt to freeze your accounts to prevent further transactions.
+- If lo...
+
+≡ƒô¥ REPORT GENERATOR AGENT ACTIVATED
+   Standardizing output and generating actions...
+
+--- Node Executed: report_generator ---
+Structured Report Criticality: High Criticality
+Next Step Flagged: legal_moderator
+
+Final Response Snippet (First 200 chars):
+## ≡ƒÜ¿ Immediate Action Required
+> **Critical**: If financial loss occurred, call **1930** immediately to report the incident and attempt to freeze your accounts to prevent further transactions.
+- If lo...
+
+ΓÜû∩╕Å LEGAL MODERATOR AGENT ACTIVATED
+   Reviewing case for statutory compliance and risk...
+
+--- Node Executed: legal_moderator ---
+Next Step Flagged: __end__
+
+Final Response Snippet (First 200 chars):
+
+
+***
+**Are you satisfied with this response?**
+*If not, you can ask for a lawyer suggestion or request to be assigned a Nyaysahayak (human).* ...
+
+--- TEST 3: Satisfaction Routing (Unsatisfied) ---
+
+==================================================
+User Query: No, I am not satisfied. I need a nyaysahayak to help me physically.
+==================================================
+
+≡ƒöì SUPERVISOR AGENT
+   Analyzing query intent...
+   ≡ƒæë ROUTING TO: SAHAYAK
+
+--- Node Executed: supervisor ---
+Next Step Flagged: sahayak
+
+≡ƒñ¥ SAHAYAK AGENT (HUMAN HANDOFF) ACTIVATED
+   Routing to human expert...
+
+--- Node Executed: sahayak ---
+Next Step Flagged: __end__
+
+Final Response Snippet (First 200 chars):
+I have forwarded your request to a Physical Sahayak. They will contact you shortly to assist with filing the complaint....
+
+Tests complete.

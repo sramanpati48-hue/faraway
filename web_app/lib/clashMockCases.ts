@@ -1,0 +1,50 @@
+import type { ClashMockCase } from "@/lib/clashApi";
+
+/** Bundled mock cases — used when backend Clash routes are unavailable. */
+export const CLASH_MOCK_CASES: ClashMockCase[] = [
+  {
+    id: "cheque_bounce",
+    title: "Section 138 NI Act — Cheque Dishonour",
+    summary:
+      "Complainant alleges cheque issued for loan repayment was dishonoured for insufficient funds.",
+    facts:
+      "On 15 January 2025, Rajesh Kumar issued a cheque for Rs 2,50,000 to Anita Sharma towards repayment of a hand loan documented by a promissory note. The cheque was presented on 1 February 2025 and returned unpaid with remark 'insufficient funds'. A statutory notice under Section 138 of the Negotiable Instruments Act was served on 10 February 2025. Payment was not made within 15 days. Anita seeks criminal complaint and recovery.",
+    tags: ["NI Act", "practice", "commercial"],
+  },
+  {
+    id: "consumer_defect",
+    title: "Consumer Forum — Defective Electronic Goods",
+    summary:
+      "Buyer claims a premium laptop failed within warranty; seller denies manufacturing defect.",
+    facts:
+      "Vikram Mehta purchased a laptop for Rs 89,999 on 5 March 2025 from TechMart Online with 2-year warranty. Within 45 days the device exhibited repeated motherboard failure. TechMart offered one repair; after second failure Vikram demanded replacement or refund citing Consumer Protection Act 2019. TechMart alleges liquid damage and void warranty. Vikram denies any spill and has service centre reports citing manufacturing defect.",
+    tags: ["consumer", "practice"],
+  },
+  {
+    id: "cyber_fraud",
+    title: "Cyber Fraud — UPI Impersonation",
+    summary:
+      "Victim transferred funds to a fraudster impersonating bank support; disputes bank liability.",
+    facts:
+      "On 20 April 2025, Priya Nair received a call from a person claiming to be her bank's fraud department. Following instructions on a spoofed SMS link, she authorised UPI transfers totalling Rs 1,80,000. She reported within 2 hours. Bank froze one beneficiary account but Rs 1,20,000 was already withdrawn. Priya filed FIR under IT Act and IPC. Bank argues customer negligence. Priya seeks restitution and argues deficient fraud monitoring.",
+    tags: ["cyber", "practice", "IPC"],
+  },
+  {
+    id: "landlord_tenant",
+    title: "Rent Control — Illegal Eviction",
+    summary:
+      "Tenant alleges forcible eviction without notice; landlord cites rent arrears and breach.",
+    facts:
+      "Amit Das rented a shop in Kolkata since 2018 at Rs 15,000/month. In March 2025 the landlord changed locks citing 6 months arrears and subletting without consent. Amit claims rent was paid via UPI through March and subletting was a shared counter with landlord's oral permission. Police complaint filed. Amit seeks restoration and damages; landlord seeks possession and mesne profits.",
+    tags: ["civil", "practice", "tenancy"],
+  },
+  {
+    id: "workplace_harassment",
+    title: "Workplace Complaint — POSH Internal Committee",
+    summary:
+      "Employee alleges harassment by supervisor; employer disputes procedure and facts.",
+    facts:
+      "Neha Singh, an analyst at FinCorp Ltd, filed an internal POSH complaint on 2 May 2025 alleging repeated inappropriate remarks and exclusion from projects by her supervisor after she refused after-hours meetings. The Internal Committee recorded statements but did not recommend transfer. Neha claims retaliation continued. Employer argues complaint was vague and Neha's performance was below standard. She seeks inquiry and interim protection.",
+    tags: ["POSH", "practice", "employment"],
+  },
+];

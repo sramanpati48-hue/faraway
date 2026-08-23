@@ -1,0 +1,38 @@
+name: Keep Render Backend Awake
+
+on:
+  schedule:
+    # Every 14 minutes (Render Free sleeps after 15m of inactivity)
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render Health Endpoint
+        run: |
+          BASE_URL="${{ secrets.RENDER_BACKEND_URL }}"
+          if [ -z "$BASE_URL" ]; then
+            BASE_URL="https://nyaysahayak.onrender.com"
+          fi
+
+          echo "Target Backend URL: ${BASE_URL}"
+          
+          # Try /health endpoint first, fallback to /ping or /api/health
+          STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "${BASE_URL}/health" || echo "000")
+
+          if [ "$STATUS" -ne 200 ]; then
+            echo "⚠️ /health returned $STATUS, trying /ping ..."
+            STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "${BASE_URL}/ping" || echo "000")
+          fi
+
+          echo "HTTP Status: $STATUS"
+
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✅ Backend is awake"
+          else
+            echo "❌ Backend returned $STATUS"
+            exit 1
+          fi

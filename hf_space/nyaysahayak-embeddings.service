@@ -1,0 +1,16 @@
+[Unit]
+Description=NyaySahayak Embeddings API
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/home/Prattay/embeddings
+ExecStart=/home/Prattay/embeddings/venv/bin/uvicorn app:app --host 127.0.0.1 --port 7860 --workers 1
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

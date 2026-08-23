@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NyaySahayak — Agent Graph Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0e1a;
+      --surface: #111827;
+      --surface2: #1a2035;
+      --border: #1e2d45;
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --pink: #ec4899;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+    header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 32px;
+      background: rgba(17,24,39,0.9);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { width: 38px; height: 38px; background: linear-gradient(135deg,var(--accent),var(--accent2)); border-radius: 10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+    header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { font-size: 0.78rem; color: var(--text-muted); margin-top: 1px; }
+    .badge { margin-left:auto; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.35); color:#a5b4fc; font-size:0.72rem; font-weight:600; padding:4px 10px; border-radius:20px; letter-spacing:0.05em; }
+
+    .layout { display:grid; grid-template-columns:1fr 360px; height:calc(100vh - 73px); }
+
+    #graph-wrap {
+      position:relative; overflow:hidden;
+      background: radial-gradient(ellipse at 20% 20%,rgba(99,102,241,0.06) 0%,transparent 55%), radial-gradient(ellipse at 80% 80%,rgba(139,92,246,0.05) 0%,transparent 55%), var(--bg);
+    }
+    #graph-wrap::before {
+      content:''; position:absolute; inset:0;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);
+      background-size:40px 40px; pointer-events:none;
+    }
+    svg#graph { width:100%; height:100%; cursor:grab; user-select:none; }
+    svg#graph:active { cursor:grabbing; }
+
+    .node-group { cursor:pointer; }
+    .node-rect { rx:14; ry:14; filter:drop-shadow(0 4px 20px rgba(0,0,0,0.5)); transition:filter 0.2s; }
+    .node-group:hover .node-rect { filter:drop-shadow(0 4px 28px rgba(99,102,241,0.55)); }
+    .node-label { font-family:'Inter',sans-serif; font-size:12px; font-weight:600; fill:#fff; text-anchor:middle; dominant-baseline:middle; }
+    .node-icon { font-size:18px; text-anchor:middle; dominant-baseline:middle; }
+    .edge-line { stroke-width:2; fill:none; opacity:0.75; }
+    .edge-label { font-family:'Inter',sans-serif; font-size:9.5px; fill:var(--text-muted); }
+
+    @keyframes pulse-ring { 0%{opacity:0.6;r:38px} 100%{opacity:0;r:60px} }
+    .entry-pulse { animation:pulse-ring 1.8s ease-out infinite; }
+
+    #sidebar { border-left:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; overflow:hidden; }
+    .sidebar-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .tab-btn { flex:1; padding:12px 4px; font-size:0.7rem; font-weight:600; color:var(--text-muted); background:none; border:none; cursor:pointer; letter-spacing:0.04em; text-transform:uppercase; border-bottom:2px solid transparent; transition:all 0.2s; }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-panel { display:none; flex:1; overflow-y:auto; padding:18px; }
+    .tab-panel.active { display:block; }
+
+    .detail-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted); gap:10px; text-align:center; }
+    .detail-placeholder .icon { font-size:2.5rem; opacity:0.4; }
+    .detail-placeholder p { font-size:0.82rem; }
+
+    .node-detail { animation:fadeIn 0.25s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+    .node-title { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .node-title .ni { font-size:1.6rem; }
+    .node-title h2 { font-size:1rem; font-weight:700; }
+    .node-title .nt { font-size:0.73rem; color:var(--text-muted); }
+
+    .info-section { margin-bottom:14px; }
+    .info-section h3 { font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:7px; }
+    .info-section p { font-size:0.8rem; color:var(--text-dim); line-height:1.55; }
+
+    .tag-list { display:flex; flex-wrap:wrap; gap:5px; }
+    .tag { font-size:0.68rem; padding:2px 7px; border-radius:5px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+    .tag.in { background:rgba(6,182,212,0.12); color:#67e8f9; border:1px solid rgba(6,182,212,0.25); }
+    .tag.out { background:rgba(16,185,129,0.1); color:#6ee7b7; border:1px solid rgba(16,185,129,0.2); }
+
+    .route-list { display:flex; flex-direction:column; gap:4px; }
+    .route-item { display:flex; align-items:flex-start; gap:7px; font-size:0.75rem; color:var(--text-dim); padding:5px 8px; background:var(--surface2); border-radius:6px; }
+    .route-item .dest { font-weight:600; color:var(--text); flex-shrink:0; }
+    .route-item .cond-label { font-size:0.68rem; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+
+    /* JSON viewer */
+    .json-block {
+      background:rgba(0,0,0,0.4);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:8px;
+      padding:10px 12px;
+      font-family:'JetBrains Mono',monospace;
+      font-size:0.67rem;
+      line-height:1.6;
+      overflow-x:auto;
+      white-space:pre;
+      max-height:280px;
+      overflow-y:auto;
+      color:#cbd5e1;
+    }
+    .json-key   { color:#93c5fd; }
+    .json-str   { color:#86efac; }
+    .json-num   { color:#fbbf24; }
+    .json-bool  { color:#a78bfa; }
+    .json-null  { color:#f87171; }
+
+    .json-section-header {
+      display:flex; align-items:center; gap:8px;
+      margin-bottom:6px;
+    }
+    .json-direction-badge {
+      font-size:0.62rem; font-weight:700; padding:2px 7px; border-radius:10px;
+      font-family:'JetBrains Mono',monospace; letter-spacing:0.05em;
+    }
+    .badge-in  { background:rgba(6,182,212,0.15); color:#67e8f9; border:1px solid rgba(6,182,212,0.3); }
+    .badge-out { background:rgba(16,185,129,0.12); color:#6ee7b7; border:1px solid rgba(16,185,129,0.25); }
+
+    /* State panel */
+    .state-section { margin-bottom:18px; }
+    .state-section h3 { font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+    .state-section h3 .dot { width:7px; height:7px; border-radius:50%; }
+    .state-field { display:flex; align-items:flex-start; gap:8px; padding:6px 10px; border-radius:6px; margin-bottom:3px; font-size:0.73rem; background:var(--surface2); }
+    .state-field .fname { font-family:'JetBrains Mono',monospace; color:#93c5fd; flex-shrink:0; }
+    .state-field .ftype { color:var(--text-muted); margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:0.65rem; }
+
+    /* Flow panel */
+    .flow-step { display:flex; gap:12px; margin-bottom:16px; position:relative; }
+    .flow-step:not(:last-child)::after { content:''; position:absolute; left:14px; top:30px; bottom:-16px; width:2px; background:linear-gradient(to bottom,var(--border),transparent); }
+    .step-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; flex-shrink:0; }
+    .step-body { flex:1; }
+    .step-body h4 { font-size:0.82rem; font-weight:600; margin-bottom:3px; }
+    .step-body p { font-size:0.75rem; color:var(--text-muted); line-height:1.5; }
+
+    .legend { padding:10px 18px; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; gap:10px; }
+    .legend-item { display:flex; align-items:center; gap:6px; font-size:0.7rem; color:var(--text-muted); }
+    .legend-dot { width:10px; height:10px; border-radius:3px; }
+
+    .controls { position:absolute; bottom:20px; left:20px; display:flex; gap:8px; z-index:10; }
+    .ctrl-btn { width:34px; height:34px; background:rgba(17,24,39,0.85); border:1px solid var(--border); color:var(--text); border-radius:8px; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); transition:all 0.2s; }
+    .ctrl-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+    #tooltip { position:absolute; background:rgba(17,24,39,0.97); border:1px solid var(--border); padding:8px 12px; border-radius:8px; font-size:0.75rem; pointer-events:none; opacity:0; transition:opacity 0.15s; max-width:220px; backdrop-filter:blur(8px); z-index:50; }
+    #tooltip.show { opacity:1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚖️</div>
+  <div>
+    <h1>NyaySahayak — Agent Graph</h1>
+    <p>LangGraph multi-agent legal assistant · Click any node to see JSON input/output</p>
+  </div>
+  <span class="badge">LANGGRAPH</span>
+</header>
+
+<div class="layout">
+  <div id="graph-wrap">
+    <svg id="graph" viewBox="0 0 900 820">
+      <defs>
+        <marker id="arr-default" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4b5563"/></marker>
+        <marker id="arr-cond"    markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker>
+        <marker id="arr-end"     markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/></marker>
+        <marker id="arr-accent"  markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/></marker>
+      </defs>
+
+      <!-- START → supervisor -->
+      <line x1="450" y1="55" x2="450" y2="95" class="edge-line" stroke="#6366f1" marker-end="url(#arr-accent)"/>
+      <!-- supervisor → specialists (conditional dashed) -->
+      <path d="M 360,140 Q 200,155 165,215" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 390,148 Q 300,180 280,215" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 430,150 Q 400,185 400,215" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 470,150 Q 520,185 530,215" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 500,148 Q 640,175 660,215" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 540,135 Q 750,160 775,215" class="edge-line" stroke="#ec4899" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <!-- supervisor → question_processor -->
+      <path d="M 450,152 Q 450,335 450,355" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <!-- supervisor → nodal_guide -->
+      <path d="M 450,152 C 450,220 660,350 660,375" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <!-- supervisor → sahayak / lawyer / moderator (direct terminal) -->
+      <path d="M 360,145 C 200,170 180,490 185,510" class="edge-line" stroke="#10b981" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 370,145 C 170,190 130,590 150,610" class="edge-line" stroke="#10b981" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 540,145 C 700,200 790,560 790,580" class="edge-line" stroke="#10b981" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <!-- specialists → report_generator (solid) -->
+      <path d="M 165,260 Q 165,310 390,360" class="edge-line" stroke="#6366f1" marker-end="url(#arr-accent)"/>
+      <path d="M 280,260 Q 310,310 390,360" class="edge-line" stroke="#6366f1" marker-end="url(#arr-accent)"/>
+      <path d="M 400,260 Q 400,310 400,360" class="edge-line" stroke="#6366f1" marker-end="url(#arr-accent)"/>
+      <path d="M 530,260 Q 490,310 430,360" class="edge-line" stroke="#6366f1" marker-end="url(#arr-accent)"/>
+      <path d="M 660,260 Q 570,310 440,360" class="edge-line" stroke="#6366f1" marker-end="url(#arr-accent)"/>
+      <!-- report_generator conditional -->
+      <path d="M 420,415 Q 350,430 310,490" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 480,415 Q 620,450 720,575" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 460,415 Q 560,435 620,470" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 460,420 Q 640,440 700,470" class="edge-line" stroke="#ec4899" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 450,425 Q 450,460 450,655" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.5"/>
+      <!-- question_processor conditional -->
+      <path d="M 350,490 Q 310,430 400,415" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 370,530 Q 550,560 720,585" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 360,535 Q 490,560 620,490" class="edge-line" stroke="#f59e0b" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 365,535 Q 540,555 700,490" class="edge-line" stroke="#ec4899" marker-end="url(#arr-cond)" stroke-dasharray="5,3"/>
+      <path d="M 340,545 Q 380,600 430,655" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.5"/>
+      <!-- terminals → END -->
+      <path d="M 185,560 Q 300,650 430,665" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.45"/>
+      <path d="M 150,655 Q 290,680 430,672" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.45"/>
+      <path d="M 790,625 Q 660,665 470,672" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.45"/>
+      <path d="M 660,540 Q 600,620 475,668" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.45"/>
+      <path d="M 775,265 Q 790,400 790,575" class="edge-line" stroke="#ef4444" marker-end="url(#arr-end)" opacity="0.45"/>
+
+      <!-- START -->
+      <circle cx="450" cy="45" r="18" fill="#1e2749" stroke="#6366f1" stroke-width="2"/>
+      <circle class="entry-pulse" cx="450" cy="45" r="38" fill="none" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="450" y="46" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="#a5b4fc">START</text>
+
+      <!-- supervisor -->
+      <g class="node-group" data-id="supervisor" transform="translate(370,100)">
+        <defs><linearGradient id="gs" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4338ca"/><stop offset="100%" style="stop-color:#6366f1"/></linearGradient></defs>
+        <rect class="node-rect" width="160" height="52" fill="url(#gs)" rx="14"/>
+        <rect width="160" height="52" rx="14" fill="none" stroke="rgba(165,180,252,0.4)" stroke-width="1.5"/>
+        <text x="28" y="27" class="node-icon">🔍</text>
+        <text x="95" y="28" class="node-label">supervisor</text>
+        <text x="95" y="42" font-family="Inter" font-size="9" fill="rgba(255,255,255,0.55)" text-anchor="middle">Entry · Router</text>
+      </g>
+
+      <!-- cyber -->
+      <g class="node-group" data-id="cyber" transform="translate(100,215)">
+        <defs><linearGradient id="gc" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1e3a5f"/><stop offset="100%" style="stop-color:#0e7490"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gc)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+        <text x="24" y="25" class="node-icon" font-size="14">💻</text>
+        <text x="72" y="26" class="node-label" font-size="11">cyber</text>
+        <text x="72" y="38" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Online Fraud</text>
+      </g>
+
+      <!-- civil -->
+      <g class="node-group" data-id="civil" transform="translate(215,215)">
+        <defs><linearGradient id="gcv" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1a3544"/><stop offset="100%" style="stop-color:#0369a1"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gcv)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(56,189,248,0.3)" stroke-width="1"/>
+        <text x="24" y="25" class="node-icon" font-size="14">🏛️</text>
+        <text x="72" y="26" class="node-label" font-size="11">civil</text>
+        <text x="72" y="38" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Properties &amp; Disputes</text>
+      </g>
+
+      <!-- domestic -->
+      <g class="node-group" data-id="domestic" transform="translate(342,215)">
+        <defs><linearGradient id="gd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#3b1f2f"/><stop offset="100%" style="stop-color:#9d174d"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gd)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(244,114,182,0.3)" stroke-width="1"/>
+        <text x="24" y="25" class="node-icon" font-size="14">🏠</text>
+        <text x="72" y="26" class="node-label" font-size="11">domestic</text>
+        <text x="72" y="38" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Abuse &amp; Violence</text>
+      </g>
+
+      <!-- scam -->
+      <g class="node-group" data-id="scam" transform="translate(468,215)">
+        <defs><linearGradient id="gsc" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#431407"/><stop offset="100%" style="stop-color:#c2410c"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gsc)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(249,115,22,0.3)" stroke-width="1"/>
+        <text x="24" y="25" class="node-icon" font-size="14">⚠️</text>
+        <text x="72" y="26" class="node-label" font-size="11">scam</text>
+        <text x="72" y="38" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Suspicious Activity</text>
+      </g>
+
+      <!-- document -->
+      <g class="node-group" data-id="document" transform="translate(593,215)">
+        <defs><linearGradient id="gdoc" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1c2825"/><stop offset="100%" style="stop-color:#065f46"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gdoc)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+        <text x="24" y="25" class="node-icon" font-size="14">📄</text>
+        <text x="72" y="26" class="node-label" font-size="11">document</text>
+        <text x="72" y="38" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">RTI / FIR / Contract</text>
+      </g>
+
+      <!-- sexual_offense -->
+      <g class="node-group" data-id="sexual_offense" transform="translate(718,215)">
+        <defs><linearGradient id="gso" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4a0436"/><stop offset="100%" style="stop-color:#be185d"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gso)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(236,72,153,0.4)" stroke-width="1.5"/>
+        <text x="24" y="25" class="node-icon" font-size="14">🔴</text>
+        <text x="72" y="26" class="node-label" font-size="10">sexual_offense</text>
+        <text x="72" y="38" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">High Sensitivity</text>
+      </g>
+
+      <!-- report_generator -->
+      <g class="node-group" data-id="report_generator" transform="translate(355,360)">
+        <defs><linearGradient id="gr" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#312e81"/><stop offset="100%" style="stop-color:#6d28d9"/></linearGradient></defs>
+        <rect class="node-rect" width="180" height="54" fill="url(#gr)" rx="14"/>
+        <rect width="180" height="54" rx="14" fill="none" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="30" y="28" class="node-icon" font-size="16">📊</text>
+        <text x="98" y="28" class="node-label">report_generator</text>
+        <text x="98" y="43" font-family="Inter" font-size="9" fill="rgba(255,255,255,0.55)" text-anchor="middle">Structured Case Report Hub</text>
+      </g>
+
+      <!-- question_processor -->
+      <g class="node-group" data-id="question_processor" transform="translate(260,460)">
+        <defs><linearGradient id="gqp" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1e1b4b"/><stop offset="100%" style="stop-color:#4f46e5"/></linearGradient></defs>
+        <rect class="node-rect" width="148" height="50" fill="url(#gqp)" rx="12"/>
+        <rect width="148" height="50" rx="12" fill="none" stroke="rgba(129,140,248,0.35)" stroke-width="1"/>
+        <text x="26" y="26" class="node-icon" font-size="14">❓</text>
+        <text x="82" y="27" class="node-label" font-size="11">question_processor</text>
+        <text x="82" y="39" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Q&amp;A Collection</text>
+      </g>
+
+      <!-- nodal_guide -->
+      <g class="node-group" data-id="nodal_guide" transform="translate(592,460)">
+        <defs><linearGradient id="gng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#052e16"/><stop offset="100%" style="stop-color:#16a34a"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="50" fill="url(#gng)" rx="12"/>
+        <rect width="128" height="50" rx="12" fill="none" stroke="rgba(34,197,94,0.35)" stroke-width="1"/>
+        <text x="24" y="26" class="node-icon" font-size="14">🧭</text>
+        <text x="72" y="27" class="node-label" font-size="11">nodal_guide</text>
+        <text x="72" y="39" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Human Guide Connect</text>
+      </g>
+
+      <!-- sahayak -->
+      <g class="node-group" data-id="sahayak" transform="translate(105,510)">
+        <defs><linearGradient id="gsh" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#064e3b"/><stop offset="100%" style="stop-color:#0d9488"/></linearGradient></defs>
+        <rect class="node-rect" width="128" height="48" fill="url(#gsh)" rx="12"/>
+        <rect width="128" height="48" rx="12" fill="none" stroke="rgba(20,184,166,0.35)" stroke-width="1"/>
+        <text x="24" y="25" class="node-icon" font-size="14">🤝</text>
+        <text x="72" y="25" class="node-label" font-size="11">sahayak</text>
+        <text x="72" y="37" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Human Support</text>
+      </g>
+
+      <!-- lawyer_forwarder -->
+      <g class="node-group" data-id="lawyer_forwarder" transform="translate(70,610)">
+        <defs><linearGradient id="glf" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1e1107"/><stop offset="100%" style="stop-color:#b45309"/></linearGradient></defs>
+        <rect class="node-rect" width="148" height="48" fill="url(#glf)" rx="12"/>
+        <rect width="148" height="48" rx="12" fill="none" stroke="rgba(245,158,11,0.35)" stroke-width="1"/>
+        <text x="26" y="25" class="node-icon" font-size="14">👨‍⚖️</text>
+        <text x="82" y="25" class="node-label" font-size="11">lawyer_forwarder</text>
+        <text x="82" y="37" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Connect to Lawyer</text>
+      </g>
+
+      <!-- legal_moderator -->
+      <g class="node-group" data-id="legal_moderator" transform="translate(716,580)">
+        <defs><linearGradient id="glm" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1e1a07"/><stop offset="100%" style="stop-color:#a16207"/></linearGradient></defs>
+        <rect class="node-rect" width="148" height="48" fill="url(#glm)" rx="12"/>
+        <rect width="148" height="48" rx="12" fill="none" stroke="rgba(234,179,8,0.35)" stroke-width="1"/>
+        <text x="26" y="25" class="node-icon" font-size="14">🛡️</text>
+        <text x="82" y="25" class="node-label" font-size="11">legal_moderator</text>
+        <text x="82" y="37" font-family="Inter" font-size="8.5" fill="rgba(255,255,255,0.5)" text-anchor="middle">Human Review</text>
+      </g>
+
+      <!-- END -->
+      <g transform="translate(415,658)">
+        <rect width="70" height="26" rx="13" fill="#1a0a0a" stroke="#ef4444" stroke-width="1.5"/>
+        <text x="35" y="14" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="#ef4444">END</text>
+      </g>
+
+      <text x="185" y="200" class="edge-label" fill="#f59e0b">cyber?</text>
+      <text x="284" y="218" class="edge-label" fill="#f59e0b">civil?</text>
+      <text x="355" y="218" class="edge-label" fill="#f59e0b">domestic?</text>
+      <text x="488" y="218" class="edge-label" fill="#f59e0b">scam?</text>
+      <text x="590" y="218" class="edge-label" fill="#f59e0b">document?</text>
+      <text x="720" y="210" class="edge-label" fill="#ec4899">sexual?</text>
+      <text x="455" y="298" class="edge-label" fill="#f59e0b">q_proc?</text>
+      <text x="555" y="360" class="edge-label" fill="#f59e0b">nodal?</text>
+    </svg>
+    <div id="tooltip"></div>
+    <div class="controls">
+      <button class="ctrl-btn" id="zoom-in">+</button>
+      <button class="ctrl-btn" id="zoom-out">−</button>
+      <button class="ctrl-btn" id="zoom-reset">⌂</button>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div class="sidebar-tabs">
+      <button class="tab-btn active" data-tab="node">Node Detail</button>
+      <button class="tab-btn" data-tab="state">State Schema</button>
+      <button class="tab-btn" data-tab="flow">Data Flow</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-node">
+      <div class="detail-placeholder" id="detail-placeholder">
+        <div class="icon">🖱️</div>
+        <p>Click any node to see<br>input/output JSON examples.</p>
+      </div>
+      <div class="node-detail" id="node-detail" style="display:none"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-state">
+      <div class="state-section">
+        <h3><span class="dot" style="background:#06b6d4"></span>Core</h3>
+        <div class="state-field"><span class="fname">messages</span><span class="ftype">List[BaseMessage]</span></div>
+        <div class="state-field"><span class="fname">next_step</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">user_details</span><span class="ftype">Dict</span></div>
+        <div class="state-field"><span class="fname">final_response</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">structured_report</span><span class="ftype">Dict</span></div>
+        <div class="state-field"><span class="fname">suggested_actions</span><span class="ftype">List[Dict]</span></div>
+        <div class="state-field"><span class="fname">case_id</span><span class="ftype">str (UUID)</span></div>
+        <div class="state-field"><span class="fname">intervention_required</span><span class="ftype">bool</span></div>
+      </div>
+      <div class="state-section">
+        <h3><span class="dot" style="background:#10b981"></span>User Context</h3>
+        <div class="state-field"><span class="fname">user_statement</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">location</span><span class="ftype">Dict{city,state,lat,lon}</span></div>
+        <div class="state-field"><span class="fname">user_id</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">user_name</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">session_id</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">user_language</span><span class="ftype">str</span></div>
+      </div>
+      <div class="state-section">
+        <h3><span class="dot" style="background:#f59e0b"></span>Q&amp;A Processor</h3>
+        <div class="state-field"><span class="fname">pending_questions</span><span class="ftype">List[{question,context,key}]</span></div>
+        <div class="state-field"><span class="fname">current_question_idx</span><span class="ftype">int</span></div>
+        <div class="state-field"><span class="fname">collected_answers</span><span class="ftype">Dict[str,str]</span></div>
+        <div class="state-field"><span class="fname">question_collection_started</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">pdf_ready</span><span class="ftype">bool</span></div>
+      </div>
+      <div class="state-section">
+        <h3><span class="dot" style="background:#ec4899"></span>Sexual Offense</h3>
+        <div class="state-field"><span class="fname">high_sensitivity</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">case_category</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">sexual_offense_intake_flow</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">waiting_for_sexual_offense_choice</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">female_lawyer_profiles</span><span class="ftype">List[Dict]</span></div>
+        <div class="state-field"><span class="fname">female_nyayguide_profiles</span><span class="ftype">List[Dict]</span></div>
+        <div class="state-field"><span class="fname">show_female_lawyer_panel</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">show_female_nyayguide_panel</span><span class="ftype">bool</span></div>
+      </div>
+      <div class="state-section">
+        <h3><span class="dot" style="background:#16a34a"></span>Nodal Guide</h3>
+        <div class="state-field"><span class="fname">nodal_guide_consent_asked</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">nodal_guide_profiles</span><span class="ftype">List[Dict]</span></div>
+        <div class="state-field"><span class="fname">show_nodal_guide_panel</span><span class="ftype">bool</span></div>
+        <div class="state-field"><span class="fname">waiting_for_nodal_guide_consent</span><span class="ftype">bool</span></div>
+      </div>
+      <div class="state-section">
+        <h3><span class="dot" style="background:#8b5cf6"></span>Misc</h3>
+        <div class="state-field"><span class="fname">pdf_url</span><span class="ftype">str</span></div>
+        <div class="state-field"><span class="fname">retrieved_legal_chunks</span><span class="ftype">List[Dict]</span></div>
+        <div class="state-field"><span class="fname">situation_summary</span><span class="ftype">Dict</span></div>
+        <div class="state-field"><span class="fname">routing_recommendation</span><span class="ftype">Dict</span></div>
+        <div class="state-field"><span class="fname">show_routing_consent</span><span class="ftype">bool</span></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-flow">
+      <div class="flow-step"><div class="step-num">1</div><div class="step-body"><h4>POST /process-query</h4><p>Frontend sends <code>query, user_id, location, session_id</code>. Backend wraps in <code>AgentState</code> and invokes graph with <code>thread_id=user_id</code>.</p></div></div>
+      <div class="flow-step"><div class="step-num">2</div><div class="step-body"><h4>Supervisor Routes</h4><p>Priority checks: sexual_offense keywords → question_processor intake flow → pending_questions → nodal consent → lawyer/sahayak intent → LLM one-word classification.</p></div></div>
+      <div class="flow-step"><div class="step-num">3</div><div class="step-body"><h4>Specialist Agent</h4><p>Cyber / Civil / Domestic / Scam / Document fetches RAG legal context, generates markdown advice with classification tags <code>[Cognizable][Complex_MLAT][Fraud_Under_10k]</code>.</p></div></div>
+      <div class="flow-step"><div class="step-num">4</div><div class="step-body"><h4>report_generator Hub</h4><p>LLM parses classification tags → builds <code>structured_report</code> JSON. Decides routing: high risk → legal_moderator, low/small → nodal_guide, medium → question_processor, sexual → sexual_offense.</p></div></div>
+      <div class="flow-step"><div class="step-num">5</div><div class="step-body"><h4>question_processor (multi-turn)</h4><p>Asks 2-3 follow-up questions one at a time. Each answer collected into <code>collected_answers</code>. Supervisor re-routes here each turn while <code>pending_questions</code> not exhausted.</p></div></div>
+      <div class="flow-step"><div class="step-num">6</div><div class="step-body"><h4>Terminal Handoff</h4><p><b>sahayak</b> saves to DB + fetches profiles → <code>show_sahayak_panel</code>. <b>lawyer_forwarder</b> → <code>recommended_lawyers</code>. <b>legal_moderator</b> → Supabase intervention queue + WS broadcast. <b>nodal_guide</b> → Gram Nyayalaya officer profile.</p></div></div>
+      <div class="flow-step"><div class="step-num">7</div><div class="step-body"><h4>API Response</h4><p>Returns <code>final_response, structured_report, suggested_actions, trace</code> to frontend. Frontend reads panel flags (<code>show_sahayak_panel</code>, <code>show_lawyer_panel</code>, etc.) to render UI.</p></div></div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Direct</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Conditional</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>Sensitive</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>→ END</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Real JSON examples derived from agent source code ────────────────────
+const NODE_META = {
+  supervisor: {
+    icon:'🔍', label:'supervisor', type:'Entry · Router',
+    desc:'Core routing agent. Priority order: sexual offense keywords → pending_questions/intake flow → nodal guide consent → lawyer/sahayak keyword intents → LLM one-word classification (cyber/civil/domestic/scam/document).',
+    reads:['messages','pending_questions','current_question_idx','high_sensitivity','case_category','waiting_for_nodal_guide_consent','waiting_for_sexual_offense_choice','structured_report','case_id'],
+    writes:['next_step','sexual_offense_intake_flow','case_id','pending_questions'],
+    routes:[
+      {dest:'cyber',         cond:'LLM → "cyber"'},
+      {dest:'civil',         cond:'LLM → "civil"'},
+      {dest:'domestic',      cond:'LLM → "domestic"'},
+      {dest:'scam',          cond:'LLM → "scam"'},
+      {dest:'document',      cond:'LLM → "document"'},
+      {dest:'question_processor', cond:'pending_questions present OR sexual_offense_intake_flow'},
+      {dest:'sexual_offense',cond:'waiting_for_sexual_offense_choice OR keyword hit'},
+      {dest:'nodal_guide',   cond:'waiting_for_nodal_guide_consent'},
+      {dest:'sahayak',       cond:'sahayak intent keyword + active case'},
+      {dest:'lawyer_forwarder',cond:'lawyer intent keyword + active case'},
+      {dest:'legal_moderator',cond:'LLM → "legal_moderator"'},
+    ],
+    input:{
+      "messages":[{"type":"human","content":"I lost ₹50,000 via UPI fraud yesterday"}],
+      "user_details":{"user_id":"uid_abc123","location":{"lat":22.57,"lon":88.36},"session_id":"sess_xyz"},
+      "pending_questions":[],"high_sensitivity":false,"case_category":"",
+      "waiting_for_nodal_guide_consent":false,"waiting_for_sexual_offense_choice":false
+    },
+    output:{"next_step":"cyber"}
+  },
+  cyber: {
+    icon:'💻', label:'cyber', type:'Specialist Agent',
+    desc:'Fetches top-5 RAG legal chunks from VectorDB. Reverse-geocodes location. Generates markdown advice with IPC/IT Act sections. Always appends classification tags for report_generator.',
+    reads:['messages','user_details'],
+    writes:['messages','final_response','next_step','retrieved_legal_chunks'],
+    routes:[{dest:'report_generator',cond:'always (fixed edge)'}],
+    input:{
+      "messages":[{"type":"human","content":"I transferred ₹50,000 via UPI to a fake customer care number"}],
+      "user_details":{"user_id":"uid_abc123","location":{"lat":22.57,"lon":88.36},"query":"UPI fraud ₹50,000"}
+    },
+    output:{
+      "messages":[{"type":"ai","content":"## 🚨 Immediate Action Required\n> Call **1930**..."}],
+      "final_response":"## 🚨 Immediate Action Required\n> **Critical**: Call **1930** (Cyber Helpline) immediately.\n\n## 📝 Step-by-Step Complaint Process\n1. **Call 1930** with transaction ID\n2. **File Online**: cybercrime.gov.in\n3. **Visit Police**: FIR at nearest station\n\n## ⚖️ Legal Sections\n- IT Act Section 66C: Identity Theft\n- IPC Section 420: Cheating\n\n[Cognizable: Yes]\n[Complex_MLAT: No]\n[Fraud_Under_10k: No]",
+      "next_step":"report_generator",
+      "retrieved_legal_chunks":[
+        {"id":"chunk_01","act_name":"IT Act","section_number":"66C","title":"Identity Theft","similarity":0.91,"category":"cyber","authority":"MHA","keywords":["fraud","upi","digital"]},
+        {"id":"chunk_02","act_name":"IPC","section_number":"420","title":"Cheating","similarity":0.88,"category":"general","authority":"Parliament"}
+      ]
+    }
+  },
+  civil: {
+    icon:'🏛️', label:'civil', type:'Specialist Agent',
+    desc:'Handles property disputes, divorce, tenant issues, consumer complaints. Uses same RAG + geolocation pipeline as cyber. Marks Non-cognizable cases appropriately.',
+    reads:['messages','user_details'],
+    writes:['messages','final_response','next_step'],
+    routes:[{dest:'report_generator',cond:'always (fixed edge)'}],
+    input:{
+      "messages":[{"type":"human","content":"My landlord won't return my ₹80,000 security deposit"}],
+      "user_details":{"user_id":"uid_abc123","location":{"lat":28.61,"lon":77.23}}
+    },
+    output:{
+      "messages":[{"type":"ai","content":"## Steps to Recover Deposit..."}],
+      "final_response":"## Steps to Recover Your Security Deposit\n1. Send legal notice (Rs 500 stamp paper)\n2. File complaint in Consumer Forum\n3. File in Rent Court if required\n\n## ⚖️ Applicable Law\n- Transfer of Property Act Section 106\n- Consumer Protection Act 2019\n\n[Cognizable: No]\n[Complex_MLAT: No]\n[Fraud_Under_10k: No]",
+      "next_step":"report_generator"
+    }
+  },
+  domestic: {
+    icon:'🏠', label:'domestic', type:'Specialist Agent',
+    desc:'Handles domestic violence, dowry harassment, family abuse. Prioritizes emergency helplines. Sets Cognizable=Yes, triggers report_generator high-risk path.',
+    reads:['messages','user_details'],
+    writes:['messages','final_response','next_step'],
+    routes:[{dest:'report_generator',cond:'always (fixed edge)'}],
+    input:{
+      "messages":[{"type":"human","content":"My husband beats me regularly and demands more dowry"}],
+      "user_details":{"user_id":"uid_abc123","location":{"lat":19.07,"lon":72.87}}
+    },
+    output:{
+      "messages":[{"type":"ai","content":"## Immediate Safety Steps..."}],
+      "final_response":"## 🚨 Immediate Safety\n> Call **100** (Police) or **1091** (Women Helpline)\n\n## ⚖️ Law Sections\n- IPC Section 498A: Cruelty by husband\n- Domestic Violence Act 2005\n- Dowry Prohibition Act Section 4\n\n[Cognizable: Yes]\n[Complex_MLAT: No]\n[Fraud_Under_10k: NA]",
+      "next_step":"report_generator"
+    }
+  },
+  scam: {
+    icon:'⚠️', label:'scam', type:'Specialist Agent',
+    desc:'Handles suspicious activity before any money is lost. Provides prevention guidance. Sets Cognizable=Yes for reporting purposes.',
+    reads:['messages','user_details'],
+    writes:['messages','final_response','next_step'],
+    routes:[{dest:'report_generator',cond:'always (fixed edge)'}],
+    input:{
+      "messages":[{"type":"human","content":"Got a call claiming to be SBI asking for KYC update via link"}],
+      "user_details":{"user_id":"uid_abc123"}
+    },
+    output:{
+      "messages":[{"type":"ai","content":"## ⚠️ Scam Warning..."}],
+      "final_response":"## ⚠️ Scam Alert — Do NOT Click That Link\n> **Never share OTP, CVV, or account number over phone.**\n1. Block the number immediately\n2. Report to cybercrime.gov.in\n3. Inform your bank\n\n[Cognizable: Yes]\n[Complex_MLAT: No]\n[Fraud_Under_10k: NA]",
+      "next_step":"report_generator"
+    }
+  },
+  document: {
+    icon:'📄', label:'document', type:'Specialist Agent',
+    desc:'Analyzes pasted legal document text: RTI, FIR, court notices, contracts. Extracts key obligations, deadlines, and legal implications.',
+    reads:['messages','user_details'],
+    writes:['messages','final_response','next_step'],
+    routes:[{dest:'report_generator',cond:'always (fixed edge)'}],
+    input:{
+      "messages":[{"type":"human","content":"[FIR text pasted]: Case No. 123/2025, Sections 420, 406 IPC..."}],
+      "user_details":{"user_id":"uid_abc123"}
+    },
+    output:{
+      "messages":[{"type":"ai","content":"## FIR Analysis..."}],
+      "final_response":"## 📄 FIR Document Analysis\n**Document Type:** FIR\n**Case Number:** 123/2025\n**Sections Invoked:** IPC 420 (Cheating), IPC 406 (Criminal breach of trust)\n**Cognizable:** Yes — police must investigate\n**Next Steps:** Engage lawyer within 7 days\n\n[Cognizable: Yes]\n[Complex_MLAT: No]\n[Fraud_Under_10k: No]",
+      "next_step":"report_generator"
+    }
+  },
+  report_generator: {
+    icon:'📊', label:'report_generator', type:'Hub · Orchestrator',
+    desc:'LLM parses classification tags from specialist response. Builds structured JSON report. Runs routing logic: escalate/ask questions/nodal/sexual offense/end. Stores alert-worthy scams in VectorDB (background thread). Fetches routing rule from Supabase.',
+    reads:['messages','final_response','user_statement','user_details','collected_answers','high_sensitivity','case_category','sexual_offense_intake_flow'],
+    writes:['structured_report','situation_summary','suggested_actions','case_id','next_step','intervention_required','user_statement','location','pending_questions','current_question_idx','collected_answers','user_language','routing_recommendation','female_lawyer_profiles','female_nyayguide_profiles','show_female_lawyer_panel','show_female_nyayguide_panel','sexual_offense_intake_flow','waiting_for_sexual_offense_choice'],
+    routes:[
+      {dest:'question_processor',cond:'medium/high risk OR missing details (query < 100 chars OR no amount)'},
+      {dest:'legal_moderator',   cond:'high risk AND (cognizable OR complex) AND amount >= ₹1L'},
+      {dest:'nodal_guide',       cond:'fraud_under_10k=true OR risk_level=Low'},
+      {dest:'sexual_offense',    cond:'sexual offense detected AND intake complete'},
+      {dest:'END',               cond:'phone lost/stolen/fraud OR user satisfied'},
+    ],
+    input:{
+      "messages":[{"type":"human","content":"I lost ₹50,000 via UPI"}],
+      "final_response":"## 🚨 Action...\n[Cognizable: Yes]\n[Complex_MLAT: No]\n[Fraud_Under_10k: No]",
+      "user_details":{"user_id":"uid_abc123","location":{"lat":22.57,"lon":88.36}},
+      "high_sensitivity":false,"sexual_offense_intake_flow":false,"collected_answers":{}
+    },
+    output:{
+      "structured_report":{
+        "incident_type":"Financial Fraud / UPI Scam",
+        "risk_level":"High",
+        "cognizable":true,
+        "is_complex_mlat":false,
+        "fraud_under_10k":false,
+        "summary":"User reports a UPI-based fraud resulting in a ₹50,000 loss. Immediate action via 1930 helpline is critical.",
+        "amount_involved":"₹50,000",
+        "user_verbatim":"I lost ₹50,000 via UPI fraud yesterday",
+        "location":{"city":"Kolkata","state":"West Bengal","lat":22.57,"lon":88.36},
+        "statutory_sections":["IT Act Section 66C","IPC Section 420"],
+        "checklist":["Call 1930 immediately","File FIR at nearest station","File on cybercrime.gov.in","Inform bank to freeze account"],
+        "criticality":"High Criticality"
+      },
+      "situation_summary":{
+        "user_query":"I lost ₹50,000 via UPI fraud yesterday",
+        "case_type":"Financial Fraud / UPI Scam",
+        "risk_level":"High",
+        "location":{"city":"Kolkata","state":"West Bengal"},
+        "user_language":"english",
+        "amount_involved":"₹50,000",
+        "collected_answers":{}
+      },
+      "suggested_actions":[
+        {"label":"Contact Bank immediately","action":"show_helpline","payload":"1930"},
+        {"label":"File Complaint Guide","action":"show_guide","payload":"cyber_crime_steps"},
+        {"label":"Connect to Nyay Guide","node":"sahayak","payload":"Request Human Help"}
+      ],
+      "case_id":"f3a9b2c1-dead-beef-cafe-123456789abc",
+      "next_step":"question_processor",
+      "intervention_required":true,
+      "user_statement":"I lost ₹50,000 via UPI fraud yesterday",
+      "location":{"city":"Kolkata","state":"West Bengal","lat":22.57,"lon":88.36},
+      "pending_questions":[
+        {"question":"When exactly did this UPI fraud occur?","context":"Timeline helps establish the case.","language":"english","key":"When exactly did this UPI fraud occur?"},
+        {"question":"Have you already filed a complaint anywhere?","context":"Prior actions determine next steps.","language":"english","key":"Have you already filed a complaint anywhere?"}
+      ],
+      "current_question_idx":0,
+      "collected_answers":{},"question_collection_started":false,"user_language":"english",
+      "routing_recommendation":{
+        "issue_type":"phone_fraud_risk","state":"West Bengal",
+        "primary_forum":"Cyber Crime Cell",
+        "legal_aid_support":{"enabled":true,"level":"DLSA/SLSA","reason":"Free legal aid available for fraud above ₹10,000"},
+        "links":{"nalsa":"https://nalsa.gov.in","cybercrime":"https://cybercrime.gov.in"}
+      },
+      "female_lawyer_profiles":[],"female_nyayguide_profiles":[],
+      "show_female_lawyer_panel":false,"show_female_nyayguide_panel":false,
+      "sexual_offense_intake_flow":false,"waiting_for_sexual_offense_choice":false
+    }
+  },
+  question_processor: {
+    icon:'❓', label:'question_processor', type:'Turn-by-turn Q&A',
+    desc:'Multi-turn agent. First call: ask Q1 → next_step=END. Supervisor routes back each user reply. Stores answer by question key in collected_answers. After last question: enriches summary via LLM → routes to next stage.',
+    reads:['messages','pending_questions','current_question_idx','collected_answers','question_collection_started','user_language','user_statement','intervention_required','case_id','structured_report','suggested_actions','routing_recommendation','sexual_offense_intake_flow','case_category'],
+    writes:['final_response','next_step','current_question_idx','collected_answers','question_collection_started','pdf_ready','situation_summary'],
+    routes:[
+      {dest:'report_generator',  cond:'All Qs done + sexual_offense_intake_flow=True'},
+      {dest:'legal_moderator',   cond:'All Qs done + intervention_required=True'},
+      {dest:'nodal_guide',       cond:'All Qs done + low risk, no intervention'},
+      {dest:'END',               cond:'Mid Q&A — waiting for next user reply'},
+    ],
+    input:{
+      "messages":[{"type":"human","content":"It happened 3 days ago on Saturday"}],
+      "pending_questions":[
+        {"question":"When exactly did this UPI fraud occur?","key":"When exactly did this UPI fraud occur?"},
+        {"question":"Have you already filed a complaint anywhere?","key":"Have you already filed a complaint anywhere?"}
+      ],
+      "current_question_idx":0,"collected_answers":{},"question_collection_started":true,
+      "user_language":"english","intervention_required":true,
+      "case_id":"f3a9b2c1-dead-beef-cafe-123456789abc","sexual_offense_intake_flow":false
+    },
+    output:{
+      "final_response":"Thank you for that information. \n\n**Have you already filed a complaint anywhere?**\n\n_Prior actions determine next steps._",
+      "next_step":"__end__",
+      "current_question_idx":1,
+      "collected_answers":{"When exactly did this UPI fraud occur?":"It happened 3 days ago on Saturday"},
+      "pending_questions":[
+        {"question":"When exactly did this UPI fraud occur?","key":"When exactly did this UPI fraud occur?"},
+        {"question":"Have you already filed a complaint anywhere?","key":"Have you already filed a complaint anywhere?"}
+      ],
+      "question_collection_started":true,"pdf_ready":false,
+      "situation_summary":{
+        "user_query":"I lost ₹50,000 via UPI fraud",
+        "case_type":"Financial Fraud / UPI Scam",
+        "collected_answers":{"When exactly did this UPI fraud occur?":"3 days ago on Saturday"}
+      }
+    }
+  },
+  nodal_guide: {
+    icon:'🧭', label:'nodal_guide', type:'Terminal · Human Connect',
+    desc:'Two-turn consent flow. Turn 1: ask consent in user language → set waiting_for_nodal_guide_consent=True. Turn 2: parse yes/no → fetch guide by GPS location from Supabase → set show_nodal_guide_panel.',
+    reads:['messages','user_language','nodal_guide_consent_asked','structured_report','suggested_actions','case_id','location'],
+    writes:['final_response','next_step','nodal_guide_consent_asked','waiting_for_nodal_guide_consent','show_nodal_guide_panel','nodal_guide_profiles'],
+    routes:[{dest:'END',cond:'always (fixed edge)'}],
+    input:{
+      "messages":[{"type":"human","content":"Yes please"}],
+      "user_language":"english","nodal_guide_consent_asked":true,
+      "location":{"lat":26.85,"lon":80.94,"city":"Lucknow","state":"Uttar Pradesh"},
+      "structured_report":{"incident_type":"Wage Dispute","risk_level":"Low"}
+    },
+    output:{
+      "final_response":"Great! Here is your Gram Nyayalaya Nodal Guide. They provide free, local legal assistance and can visit you if needed. 🏛️",
+      "next_step":"__end__","show_nodal_guide_panel":true,
+      "nodal_guide_profiles":[{
+        "uid":"guide_001","name":"Ramesh Verma",
+        "location":"Lucknow, Uttar Pradesh","occupation":"Gram Nyayalaya Officer",
+        "bio":"10 years experience in rural legal aid and land dispute resolution",
+        "contact_number":"+91-9876543210","email":"ramesh.verma@gnyayalaya.up.gov.in",
+        "availability":"Available","rating":4.7,"cases_resolved":142,
+        "languages":["Hindi","English","Bhojpuri"]
+      }],
+      "nodal_guide_consent_asked":true,"waiting_for_nodal_guide_consent":false,
+      "suggested_actions":[]
+    }
+  },
+  sahayak: {
+    icon:'🤝', label:'sahayak', type:'Terminal · Human Support',
+    desc:'Writes case to sahayak_cases Supabase table. Fetches all sahayak profiles. Returns recommended_sahayaks list + show_sahayak_panel=True for frontend to render profile cards.',
+    reads:['user_id','user_name','session_id','structured_report','user_details'],
+    writes:['messages','final_response','suggested_actions','next_step','recommended_sahayaks','sahayak_case_id','show_sahayak_panel'],
+    routes:[{dest:'END',cond:'always (fixed edge)'}],
+    input:{
+      "user_id":"uid_abc123","user_name":"Priya Sharma","session_id":"sess_xyz789",
+      "structured_report":{"incident_type":"Financial Fraud / UPI Scam","risk_level":"High"}
+    },
+    output:{
+      "final_response":"I have registered your case and alerted nearby Nyay Guides (community legal helpers). Here are Sahayaks available in your area.",
+      "suggested_actions":[],"next_step":"__end__",
+      "recommended_sahayaks":[{
+        "uid":"sahayak_01","name":"Anjali Singh",
+        "location":"Kolkata, West Bengal","occupation":"Community Legal Aid",
+        "bio":"Certified NyaySahayak with 5 years experience in cyber fraud cases",
+        "contact_number":"+91-9123456789","availability":"Available",
+        "rating":4.8,"cases_resolved":89,"languages":["Bengali","Hindi","English"]
+      }],
+      "sahayak_case_id":"sah_case_a1b2c3",
+      "show_sahayak_panel":true
+    }
+  },
+  lawyer_forwarder: {
+    icon:'👨‍⚖️', label:'lawyer_forwarder', type:'Terminal · Lawyer Connect',
+    desc:'Searches lawyers by incident_type via supabase_db.search_lawyers_by_specialization(). Also calls forward_case_to_lawyer() creating a lawyer_cases DB entry so lawyers see it in their dashboard.',
+    reads:['messages','structured_report','user_id','user_name','session_id'],
+    writes:['messages','final_response','next_step','suggested_actions','recommended_lawyers','lawyer_case_id','show_lawyer_panel'],
+    routes:[{dest:'END',cond:'always (fixed edge)'}],
+    input:{
+      "structured_report":{"incident_type":"Financial Fraud / UPI Scam","risk_level":"High","amount_involved":"₹50,000"},
+      "user_id":"uid_abc123","user_name":"Priya Sharma","session_id":"sess_xyz789"
+    },
+    output:{
+      "final_response":"✅ I've found **3 verified lawyers** specializing in **Financial Fraud / UPI Scam** who can help with your case:\n\n### 1. Adv. Suresh Kumar\n**Specialty:** Cyber & Financial Crime | **Experience:** 12 Years\n**Rating:** 4.9 ⭐ | **Location:** Kolkata, WB",
+      "next_step":"__end__",
+      "suggested_actions":[
+        {"label":"View Lawyer Profiles","action":"show_lawyers","payload":"show_lawyers"},
+        {"label":"No, I'll handle it myself","action":"end","payload":"No thanks, I'll proceed on my own."}
+      ],
+      "recommended_lawyers":[{
+        "name":"Adv. Suresh Kumar","specialization":"Cyber & Financial Crime",
+        "experience":12,"hourly_rate":"₹2,000/hr","rating":4.9,
+        "bio":"Specializes in online fraud recovery and cybercrime litigation with 200+ cases won.",
+        "location":"Kolkata, WB"
+      }],
+      "lawyer_case_id":"law_case_x9y8z7","show_lawyer_panel":true
+    }
+  },
+  legal_moderator: {
+    icon:'🛡️', label:'legal_moderator', type:'Terminal · Moderation',
+    desc:'Calls supabase_db.create_intervention_case() → writes to interventions table with collection_name="moderator". This triggers Supabase webhook → main.py broadcasts via WebSocket to all connected moderator dashboards.',
+    reads:['structured_report','user_details','case_id','user_statement','location','pdf_url'],
+    writes:['messages','final_response','intervention_required','intervention_collection','case_id','suggested_actions','next_step'],
+    routes:[{dest:'END',cond:'always (fixed edge)'}],
+    input:{
+      "structured_report":{"incident_type":"Financial Fraud / UPI Scam","risk_level":"High","cognizable":true,"amount_involved":"₹50,000","summary":"User lost ₹50,000 via UPI fraud...","criticality":"High Criticality"},
+      "user_details":{"user_id":"uid_abc123","session_id":"sess_xyz789"},
+      "case_id":"f3a9b2c1-dead-beef-cafe-123456789abc",
+      "user_statement":"I lost ₹50,000 via UPI fraud yesterday",
+      "location":{"city":"Kolkata","state":"West Bengal"},"pdf_url":null
+    },
+    output:{
+      "messages":[{"type":"system","content":"🚨 MODERATOR REVIEW INITIATED\nYour case needs a human legal moderator review..."}],
+      "final_response":"🚨 **MODERATOR REVIEW INITIATED**\n\nYour case needs a human legal moderator review due to risk and complexity signals detected in the report.\n\n_Your case is now marked as pending review. You can continue chatting while the moderator reviews your details and PDF report._",
+      "intervention_required":true,"intervention_collection":"moderator",
+      "case_id":"f3a9b2c1-dead-beef-cafe-123456789abc",
+      "suggested_actions":[],"next_step":"__end__"
+    }
+  },
+  sexual_offense: {
+    icon:'🔴', label:'sexual_offense', type:'Terminal · High Sensitivity',
+    desc:'Two-phase handler. Phase 1 (waiting_for_choice=False): show support choices (1. Lawyer 2. Female Lawyer 3. Female NyayGuide 4. Urgent Help). Phase 2: parse user choice. "No" → routes to legal_moderator. "NyayGuide" → END (no escalation). All other choices → END with appropriate panels.',
+    reads:['messages','structured_report','user_language','female_lawyer_profiles','female_nyayguide_profiles','case_id','waiting_for_sexual_offense_choice'],
+    writes:['final_response','suggested_actions','next_step','waiting_for_sexual_offense_choice','show_female_lawyer_panel','show_female_nyayguide_panel'],
+    routes:[
+      {dest:'END',              cond:'Phase 1: presenting choice options'},
+      {dest:'legal_moderator',  cond:'User says "No" to all options'},
+      {dest:'END',              cond:'User selects lawyer / nyayguide / urgent help'},
+    ],
+    input:{
+      "messages":[{"type":"human","content":"connect female lawyer"}],
+      "structured_report":{"incident_type":"Sexual Offence / Harassment","risk_level":"High","high_sensitivity":true,"immediate_danger":false,"minor_flag":false},
+      "user_language":"english","waiting_for_sexual_offense_choice":true,
+      "female_lawyer_profiles":[{"name":"Adv. Meera Joshi","specialization":"Women & POCSO Law","rating":4.9}],
+      "female_nyayguide_profiles":[{"name":"Sunita Devi","occupation":"Women's Rights Counsellor"}]
+    },
+    output:{
+      "final_response":"We are proceeding with specialized support now. A female lawyer/female NyayGuide option is available below as requested.",
+      "suggested_actions":[
+        {"label":"Connect with Female Lawyer","node":"female_lawyer","payload":"Request Female Lawyer"},
+        {"label":"Connect with Female NyayGuide","node":"female_nyayguide","payload":"Request Female NyayGuide Support"}
+      ],
+      "next_step":"__end__","waiting_for_sexual_offense_choice":false,
+      "show_female_lawyer_panel":true,"show_female_nyayguide_panel":true,
+      "female_lawyer_profiles":[{"name":"Adv. Meera Joshi","specialization":"Women & POCSO Law","rating":4.9}],
+      "female_nyayguide_profiles":[{"name":"Sunita Devi","occupation":"Women's Rights Counsellor"}]
+    }
+  },
+};
+
+// ── JSON syntax highlight ─────────────────────────────────────────────────
+function hi(json) {
+  const s = typeof json === 'string' ? json : JSON.stringify(json, null, 2);
+  return s.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+    let c = 'json-num';
+    if (/^"/.test(m)) { c = /:$/.test(m) ? 'json-key' : 'json-str'; }
+    else if (/true|false/.test(m)) c = 'json-bool';
+    else if (/null/.test(m)) c = 'json-null';
+    return `<span class="${c}">${m}</span>`;
+  });
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-' + b.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Node click ───────────────────────────────────────────────────────────
+document.querySelectorAll('.node-group').forEach(g => {
+  g.addEventListener('click', () => {
+    const m = NODE_META[g.dataset.id];
+    if (!m) return;
+    document.getElementById('detail-placeholder').style.display = 'none';
+    const det = document.getElementById('node-detail');
+    det.style.display = 'block';
+    // Switch to node tab
+    document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    document.querySelector('[data-tab="node"]').classList.add('active');
+    document.getElementById('tab-node').classList.add('active');
+
+    const routeHTML = m.routes.map(r =>
+      `<div class="route-item"><span class="dest">→ ${r.dest}</span><span class="cond-label">${r.cond}</span></div>`
+    ).join('');
+
+    det.innerHTML = `
+      <div class="node-title">
+        <span class="ni">${m.icon}</span>
+        <div><h2>${m.label}</h2><div class="nt">${m.type}</div></div>
+      </div>
+      <div class="info-section"><h3>Description</h3><p>${m.desc}</p></div>
+      <div class="info-section"><h3>Reads from State</h3><div class="tag-list">${m.reads.map(f=>`<span class="tag in">${f}</span>`).join('')}</div></div>
+      <div class="info-section"><h3>Writes to State</h3><div class="tag-list">${m.writes.map(f=>`<span class="tag out">${f}</span>`).join('')}</div></div>
+      <div class="info-section"><h3>Routes</h3><div class="route-list">${routeHTML}</div></div>
+      <div class="info-section">
+        <div class="json-section-header"><h3 style="margin:0">Input JSON</h3><span class="json-direction-badge badge-in">📥 INPUT</span></div>
+        <pre class="json-block">${hi(m.input)}</pre>
+      </div>
+      <div class="info-section">
+        <div class="json-section-header"><h3 style="margin:0">Output JSON</h3><span class="json-direction-badge badge-out">📤 OUTPUT</span></div>
+        <pre class="json-block">${hi(m.output)}</pre>
+      </div>
+    `;
+  });
+});
+
+// ── Pan & Zoom ────────────────────────────────────────────────────────────
+const svg = document.getElementById('graph');
+let vb = { x:0, y:0, w:900, h:820 };
+let pan = false, sp = {x:0,y:0};
+function applyVB() { svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); }
+svg.addEventListener('mousedown', e => { if (e.target.closest('.node-group')) return; pan=true; sp={x:e.clientX,y:e.clientY}; });
+window.addEventListener('mousemove', e => { if (!pan) return; vb.x -= (e.clientX-sp.x)*(vb.w/svg.clientWidth); vb.y -= (e.clientY-sp.y)*(vb.h/svg.clientHeight); sp={x:e.clientX,y:e.clientY}; applyVB(); });
+window.addEventListener('mouseup', () => pan=false);
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f = e.deltaY>0 ? 1.1 : 0.9;
+  const r = svg.getBoundingClientRect();
+  const mx=(e.clientX-r.left)/r.width*vb.w+vb.x, my=(e.clientY-r.top)/r.height*vb.h+vb.y;
+  vb.w*=f; vb.h*=f;
+  vb.x=mx-(e.clientX-r.left)/r.width*vb.w;
+  vb.y=my-(e.clientY-r.top)/r.height*vb.h;
+  applyVB();
+}, {passive:false});
+document.getElementById('zoom-in').addEventListener('click', () => { vb.x+=vb.w*0.1; vb.y+=vb.h*0.1; vb.w*=0.8; vb.h*=0.8; applyVB(); });
+document.getElementById('zoom-out').addEventListener('click', () => { vb.x-=vb.w*0.1; vb.y-=vb.h*0.1; vb.w/=0.8; vb.h/=0.8; applyVB(); });
+document.getElementById('zoom-reset').addEventListener('click', () => { vb={x:0,y:0,w:900,h:820}; applyVB(); });
+
+// ── Tooltip ───────────────────────────────────────────────────────────────
+const tt = document.getElementById('tooltip');
+document.querySelectorAll('.node-group').forEach(g => {
+  g.addEventListener('mouseenter', () => {
+    const m = NODE_META[g.dataset.id]; if (!m) return;
+    tt.innerHTML = `<b>${m.icon} ${m.label}</b><br><span style="color:#64748b">${m.type}</span>`;
+    tt.classList.add('show');
+  });
+  g.addEventListener('mousemove', e => {
+    const wr = document.getElementById('graph-wrap').getBoundingClientRect();
+    tt.style.left = (e.clientX-wr.left+12)+'px';
+    tt.style.top  = (e.clientY-wr.top-10)+'px';
+  });
+  g.addEventListener('mouseleave', () => tt.classList.remove('show'));
+});
+</script>
+</body>
+</html>

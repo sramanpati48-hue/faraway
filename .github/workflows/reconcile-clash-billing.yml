@@ -1,0 +1,25 @@
+name: Reconcile Clash billing
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm pending Razorpay checkouts
+        env:
+          BASE_URL: ${{ secrets.CLASH_BILLING_API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET not set; skip reconcile"
+            exit 0
+          fi
+          if [ -z "$BASE_URL" ]; then
+            BASE_URL="https://vps-3965724c.vps.ovh.net/apis"
+          fi
+          curl -fsS -X POST "${BASE_URL}/api/cron/clash-billing/reconcile" \
+            -H "X-Cron-Secret: ${CRON_SECRET}"

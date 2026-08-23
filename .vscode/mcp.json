@@ -1,0 +1,40 @@
+{
+	"servers": {
+		"context7": {
+			"type": "http",
+			"url": "https://mcp.context7.com/mcp/oauth"
+		},
+		"supabase": {
+			"type": "http",
+			"url": "https://mcp.supabase.com/mcp?project_ref=gvlaunwjszelncwvdmso"
+		},
+		"hf-mcp-server": {
+			"url": "https://huggingface.co/mcp?login",
+			"type": "http"
+		},
+		"cloudinary-asset-mgmt": {
+			"type": "sse",
+			"url": "https://asset-management.mcp.cloudinary.com/mcp",
+			"headers": {
+				"cloudinary-url": "cloudinary://${env:CLOUDINARY_API_KEY}:${env:CLOUDINARY_API_SECRET}@${env:CLOUDINARY_CLOUD_NAME}"
+			}
+		},
+		"cloudinary-env-config": {
+			"type": "sse",
+			"url": "https://environment-config.mcp.cloudinary.com/mcp",
+			"headers": {
+				"cloudinary-cloud-name": "${env:CLOUDINARY_CLOUD_NAME}",
+				"cloudinary-api-key": "${env:CLOUDINARY_API_KEY}",
+				"cloudinary-api-secret": "${env:CLOUDINARY_API_SECRET}"
+			}
+		},
+		"cloudinary-smd": {
+			"type": "sse",
+			"url": "https://structured-metadata.mcp.cloudinary.com/mcp",
+			"headers": {
+				"cloudinary-url": "cloudinary://${env:CLOUDINARY_API_KEY}:${env:CLOUDINARY_API_SECRET}@${env:CLOUDINARY_CLOUD_NAME}"
+			}
+		}
+	},
+	"inputs": []
+}

@@ -1,0 +1,303 @@
+[
+  {
+    "id": "0223e505-8254-4ad2-9523-d1e1649476a1",
+    "name": "Ms. Anjali Patel",
+    "email": "anjali.patel@mindcare.in",
+    "contact_number": "+91-9876543220",
+    "location": "Sector 14, Dwarka",
+    "state": "Delhi",
+    "city": "Delhi",
+    "bio": "Clinical psychologist specializing in trauma counseling and sexual abuse recovery. 9 years of experience in crisis intervention and healing.",
+    "avatar": "https://ui-avatars.com/api/?name=Anjali+Patel&background=f39c12&color=fff&size=128",
+    "availability": "Available",
+    "rating": 4.9,
+    "sessions_completed": 156,
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "specialization": [
+      "Sexual Trauma",
+      "PTSD",
+      "Abuse Recovery"
+    ],
+    "qualification": "M.Phil Clinical Psychology",
+    "certification": null,
+    "experience_years": 9,
+    "consultation_fee": 1500.0,
+    "verified": true,
+    "created_at": "2026-03-27T16:59:38.326594",
+    "updated_at": "2026-03-27T16:59:38.326594",
+    "lat": null,
+    "lon": null,
+    "lat_min": null,
+    "lat_max": null,
+    "lon_min": null,
+    "lon_max": null
+  },
+  {
+    "id": "d627bf05-ea86-4e57-a8b1-9b285fdbd358",
+    "name": "Dr. Neha Sharma",
+    "email": "neha.sharma@healingcentre.org",
+    "contact_number": "+91-9876543221",
+    "location": "Greater Kailash, Delhi",
+    "state": "Delhi",
+    "city": "Delhi",
+    "bio": "Licensed counselor and psychotherapist with expertise in trauma, grief, and family counseling. Founder of Delhi Women Support Initiative.",
+    "avatar": "https://ui-avatars.com/api/?name=Neha+Sharma&background=16a085&color=fff&size=128",
+    "availability": "Available",
+    "rating": 4.8,
+    "sessions_completed": 203,
+    "languages": [
+      "Hindi",
+      "English",
+      "Punjabi"
+    ],
+    "specialization": [
+      "Sexual Trauma",
+      "Domestic Violence",
+      "Family Therapy",
+      "PTSD"
+    ],
+    "qualification": "M.A Psychology, Certified Trauma Therapist",
+    "certification": null,
+    "experience_years": 11,
+    "consultation_fee": 1800.0,
+    "verified": true,
+    "created_at": "2026-03-27T16:59:38.326594",
+    "updated_at": "2026-03-27T16:59:38.326594",
+    "lat": null,
+    "lon": null,
+    "lat_min": null,
+    "lat_max": null,
+    "lon_min": null,
+    "lon_max": null
+  },
+  {
+    "id": "7a21fed1-61f6-4873-b230-fec834d19b72",
+    "name": "Ms. Rani Das",
+    "email": "rani.das@safeplace.org.in",
+    "contact_number": "+91-9876543222",
+    "location": "Rohini, Delhi",
+    "state": "Delhi",
+    "city": "Delhi",
+    "bio": "Dedicated counselor working with survivors of sexual violence. Provides crisis support, emotional healing, and rehabilitation guidance.",
+    "avatar": "https://ui-avatars.com/api/?name=Rani+Das&background=c0392b&color=fff&size=128",
+    "availability": "Available",
+    "rating": 4.7,
+    "sessions_completed": 189,
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "specialization": [
+      "Sexual Violence Support",
+      "Crisis Intervention",
+      "Healing"
+    ],
+    "qualification": "B.A Psychology, Crisis Counseling Certification",
+    "certification": null,
+    "experience_years": 8,
+    "consultation_fee": 1200.0,
+    "verified": true,
+    "created_at": "2026-03-27T16:59:38.326594",
+    "updated_at": "2026-03-27T16:59:38.326594",
+    "lat": null,
+    "lon": null,
+    "lat_min": null,
+    "lat_max": null,
+    "lon_min": null,
+    "lon_max": null
+  },
+  {
+    "id": "c9a38c49-9767-4308-a90c-c353843e72b5",
+    "name": "Ms. Kavita Verma",
+    "email": "kavita.verma@empower.in",
+    "contact_number": "+91-9876543223",
+    "location": "Noida Extension, Delhi NCR",
+    "state": "Delhi",
+    "city": "Delhi",
+    "bio": "Therapist specializing in women's mental health, sexual trauma recovery, and empowerment counseling. Member of Indian Association of Counselors.",
+    "avatar": "https://ui-avatars.com/api/?name=Kavita+Verma&background=2980b9&color=fff&size=128",
+    "availability": "Available",
+    "rating": 4.8,
+    "sessions_completed": 167,
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "specialization": [
+      "Sexual Trauma",
+      "Healing",
+      "Empowerment",
+      "Depression"
+    ],
+    "qualification": "M.Sc Psychology, Trauma-Informed Care Specialist",
+    "certification": null,
+    "experience_years": 10,
+    "consultation_fee": 1600.0,
+    "verified": true,
+    "created_at": "2026-03-27T16:59:38.326594",
+    "updated_at": "2026-03-27T16:59:38.326594",
+    "lat": null,
+    "lon": null,
+    "lat_min": null,
+    "lat_max": null,
+    "lon_min": null,
+    "lon_max": null
+  },
+  {
+    "id": "66328d9b-e537-4124-8e7c-783ba8b5e1d6",
+    "name": "Meenal Chhabra",
+    "email": "meenal.chhabra.delhi.nyayguide@nyaysahayak.in",
+    "contact_number": "+91-9820011002",
+    "location": "East Delhi NyayGuide Desk, Delhi",
+    "state": "Delhi",
+    "city": "East Delhi",
+    "bio": "Community legal support and referral specialist for women and families.",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "10AM-7PM",
+    "rating": 4.8,
+    "sessions_completed": 198,
+    "languages": [
+      "Hindi",
+      "English",
+      "Punjabi"
+    ],
+    "specialization": [
+      "Family Counselling",
+      "Legal Navigation"
+    ],
+    "qualification": "MA Psychology",
+    "certification": [
+      "Psychological First Aid",
+      "Gender Sensitization"
+    ],
+    "experience_years": 6,
+    "consultation_fee": 0.0,
+    "verified": true,
+    "created_at": "2026-03-27T18:57:23.133544",
+    "updated_at": "2026-03-27T18:57:23.133544",
+    "lat": 28.628,
+    "lon": 77.2789,
+    "lat_min": 28.54,
+    "lat_max": 28.79,
+    "lon_min": 77.15,
+    "lon_max": 77.38
+  },
+  {
+    "id": "5824922b-317e-41d9-a37a-8058356e32e5",
+    "name": "Pooja Sethi",
+    "email": "pooja.sethi.delhi.nyayguide@nyaysahayak.in",
+    "contact_number": "+91-9820011001",
+    "location": "Central Delhi Support Hub, Delhi",
+    "state": "Delhi",
+    "city": "New Delhi",
+    "bio": "Trauma-informed NyayGuide supporting survivors through legal and emotional pathways.",
+    "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "9AM-6PM",
+    "rating": 4.9,
+    "sessions_completed": 245,
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "specialization": [
+      "Trauma Support",
+      "Crisis Counselling"
+    ],
+    "qualification": "MSW",
+    "certification": [
+      "NIMHANS Trauma Care",
+      "POSH Awareness"
+    ],
+    "experience_years": 7,
+    "consultation_fee": 0.0,
+    "verified": true,
+    "created_at": "2026-03-27T18:57:23.133544",
+    "updated_at": "2026-03-27T18:57:23.133544",
+    "lat": 28.6139,
+    "lon": 77.209,
+    "lat_min": 28.5,
+    "lat_max": 28.75,
+    "lon_min": 76.95,
+    "lon_max": 77.3
+  },
+  {
+    "id": "ef6469ab-c9b5-4fac-bd97-2b611c6c21fd",
+    "name": "Ritika Vashisht",
+    "email": "ritika.vashisht.delhi.nyayguide@nyaysahayak.in",
+    "contact_number": "+91-9820011003",
+    "location": "North Delhi Legal Aid Link, Delhi",
+    "state": "Delhi",
+    "city": "North Delhi",
+    "bio": "Supports complainants with documentation, police coordination, and safe referrals.",
+    "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "8AM-4PM",
+    "rating": 4.7,
+    "sessions_completed": 176,
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "specialization": [
+      "Case Documentation",
+      "Victim Assistance"
+    ],
+    "qualification": "LLB",
+    "certification": [
+      "Victim Advocacy",
+      "Legal Aid Volunteer"
+    ],
+    "experience_years": 5,
+    "consultation_fee": 0.0,
+    "verified": true,
+    "created_at": "2026-03-27T18:57:23.133544",
+    "updated_at": "2026-03-27T18:57:23.133544",
+    "lat": 28.7041,
+    "lon": 77.1025,
+    "lat_min": 28.62,
+    "lat_max": 28.91,
+    "lon_min": 77.06,
+    "lon_max": 77.3
+  },
+  {
+    "id": "7e9a14ee-54e4-4671-807b-eada8c758825",
+    "name": "Farah Naaz",
+    "email": "farah.naaz.delhi.nyayguide@nyaysahayak.in",
+    "contact_number": "+91-9820011004",
+    "location": "South Delhi Crisis Response, Delhi",
+    "state": "Delhi",
+    "city": "South Delhi",
+    "bio": "Experienced in crisis response for sexual offense survivors and shelter coordination.",
+    "avatar": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=250&h=250&auto=format&fit=crop",
+    "availability": "24x7 on-call",
+    "rating": 4.9,
+    "sessions_completed": 264,
+    "languages": [
+      "Hindi",
+      "English",
+      "Urdu"
+    ],
+    "specialization": [
+      "Sexual Offence Support",
+      "Shelter Referral"
+    ],
+    "qualification": "MSc Clinical Psychology",
+    "certification": [
+      "Trauma Intervention",
+      "POCSO Support"
+    ],
+    "experience_years": 8,
+    "consultation_fee": 0.0,
+    "verified": true,
+    "created_at": "2026-03-27T18:57:23.133544",
+    "updated_at": "2026-03-27T18:57:23.133544",
+    "lat": 28.5245,
+    "lon": 77.1855,
+    "lat_min": 28.41,
+    "lat_max": 28.63,
+    "lon_min": 77.08,
+    "lon_max": 77.34
+  }
+]

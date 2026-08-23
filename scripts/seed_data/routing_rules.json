@@ -1,0 +1,379 @@
+[
+  {
+    "state_name": "ALL",
+    "issue_type": "phone_lost_only",
+    "primary_forum": "State Police / Local Police Station",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Lost phone without theft or fraud indicators",
+    "routing_message": "File a lost phone report with the state police portal or nearest police station, then block the handset on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "cybercrime": "https://cybercrime.gov.in"
+    },
+    "priority": 50,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "phone_theft_route",
+    "primary_forum": "Police FIR / Theft Complaint",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Phone theft/snatching needs immediate police complaint",
+    "routing_message": "File a theft complaint/FIR with police immediately, then block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "cybercrime": "https://cybercrime.gov.in"
+    },
+    "priority": 50,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "phone_fraud_risk",
+    "primary_forum": "National Cybercrime Portal",
+    "secondary_forum": "Police + CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Phone loss/theft with OTP/bank/UPI/SIM/account misuse indicators",
+    "routing_message": "Call 1930 immediately and file on the National Cybercrime Portal, then also report to police and block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "helpline_1930": "1930"
+    },
+    "priority": 40,
+    "active": true
+  },
+  {
+    "state_name": "Delhi",
+    "issue_type": "phone_lost_only",
+    "primary_forum": "Delhi Police Lost Report",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific police route for lost phone",
+    "routing_message": "File a lost phone report with the state police portal or nearest police station, then block the handset on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://delhipolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_lost": "https://lostfound.delhipolice.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Delhi",
+    "issue_type": "phone_theft_route",
+    "primary_forum": "Delhi Police e-FIR / Services",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific theft route for Delhi",
+    "routing_message": "File a theft complaint/FIR with police immediately, then block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://delhipolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_theft": "https://delhipolice.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Delhi",
+    "issue_type": "phone_fraud_risk",
+    "primary_forum": "National Cybercrime Portal",
+    "secondary_forum": "Delhi Police + CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Fraud-risk route with state police follow-up",
+    "routing_message": "Call 1930 immediately and file on the National Cybercrime Portal, then also report to police and block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://delhipolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "helpline_1930": "1930"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Bihar",
+    "issue_type": "phone_lost_only",
+    "primary_forum": "Bihar Police / Local Police Station",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific police route for lost phone",
+    "routing_message": "File a lost phone report with the state police portal or nearest police station, then block the handset on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://biharpolice.bihar.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_lost": "https://biharpolice.bihar.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Bihar",
+    "issue_type": "phone_theft_route",
+    "primary_forum": "Bihar Police Complaint Route",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific theft route for Bihar",
+    "routing_message": "File a theft complaint/FIR with police immediately, then block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://biharpolice.bihar.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_theft": "https://biharpolice.bihar.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Bihar",
+    "issue_type": "phone_fraud_risk",
+    "primary_forum": "National Cybercrime Portal",
+    "secondary_forum": "Bihar Police + CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Fraud-risk route with state police follow-up",
+    "routing_message": "Call 1930 immediately and file on the National Cybercrime Portal, then also report to police and block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://biharpolice.bihar.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "helpline_1930": "1930"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Uttar Pradesh",
+    "issue_type": "phone_lost_only",
+    "primary_forum": "UP Police Citizen Services",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific police route for lost phone",
+    "routing_message": "File a lost phone report with the state police portal or nearest police station, then block the handset on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://uppolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_lost": "https://uppolice.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Uttar Pradesh",
+    "issue_type": "phone_theft_route",
+    "primary_forum": "UP Police Complaint / FIR Support",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific theft route for Uttar Pradesh",
+    "routing_message": "File a theft complaint/FIR with police immediately, then block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://uppolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_theft": "https://uppolice.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "Uttar Pradesh",
+    "issue_type": "phone_fraud_risk",
+    "primary_forum": "National Cybercrime Portal",
+    "secondary_forum": "UP Police + CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Fraud-risk route with state police follow-up",
+    "routing_message": "Call 1930 immediately and file on the National Cybercrime Portal, then also report to police and block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://uppolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "helpline_1930": "1930"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "West Bengal",
+    "issue_type": "phone_lost_only",
+    "primary_forum": "West Bengal Police Portal",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific police route for lost phone",
+    "routing_message": "File a lost phone report with the state police portal or nearest police station, then block the handset on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://wbpolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_lost": "https://wbpolice.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "West Bengal",
+    "issue_type": "phone_theft_route",
+    "primary_forum": "West Bengal Police Complaint Route",
+    "secondary_forum": "CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "State specific theft route for West Bengal",
+    "routing_message": "File a theft complaint/FIR with police immediately, then block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://wbpolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "police_theft": "https://wbpolice.gov.in"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "West Bengal",
+    "issue_type": "phone_fraud_risk",
+    "primary_forum": "National Cybercrime Portal",
+    "secondary_forum": "West Bengal Police + CEIR",
+    "legal_aid_support": false,
+    "legal_aid_level": null,
+    "reason": "Fraud-risk route with state police follow-up",
+    "routing_message": "Call 1930 immediately and file on the National Cybercrime Portal, then also report to police and block the device on CEIR.",
+    "action_links": {
+      "ceir": "https://www.ceir.gov.in",
+      "police": "https://wbpolice.gov.in",
+      "cybercrime": "https://cybercrime.gov.in",
+      "helpline_1930": "1930"
+    },
+    "priority": 10,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "domestic_violence",
+    "primary_forum": "Police / DV support path",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Domestic violence cases should strongly suggest legal aid support",
+    "routing_message": "Free legal aid available. Get drafting and filing help through DLSA while using police/DV support if urgent.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 30,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "maintenance_family",
+    "primary_forum": "Family/DV legal pathway",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Family maintenance disputes need legal-aid first-class visibility",
+    "routing_message": "Free legal aid available. DLSA can assist with counselling, drafting, filing and forum guidance.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 30,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "wage_dispute",
+    "primary_forum": "Labour/Local forum",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Wage disputes often need drafting and filing support",
+    "routing_message": "Free legal aid available. DLSA can help with complaint drafting, labour forum routing and follow-up.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 30,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "land_possession",
+    "primary_forum": "Local civil forum / court",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Land possession disputes benefit from legal aid support",
+    "routing_message": "Need help understanding where to file? DLSA can help with drafting, filing and forum guidance.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 30,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "water_irrigation",
+    "primary_forum": "Local dispute forum",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Water/irrigation conflicts are strong legal-aid candidates",
+    "routing_message": "Free legal aid available for rural dispute support, drafting, and local forum guidance.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 30,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "pathway_boundary",
+    "primary_forum": "Local dispute forum",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Pathway/boundary disputes are strong legal-aid candidates",
+    "routing_message": "Free legal aid available. Get drafting and filing help through DLSA.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 30,
+    "active": true
+  },
+  {
+    "state_name": "ALL",
+    "issue_type": "other",
+    "primary_forum": "Manual review",
+    "secondary_forum": "DLSA",
+    "legal_aid_support": true,
+    "legal_aid_level": "DLSA/SLSA",
+    "reason": "Safe fallback for unclear forum or vulnerable user",
+    "routing_message": "Need help understanding where to file? Free legal aid is available through DLSA.",
+    "action_links": {
+      "nalsa": "https://nalsa.gov.in",
+      "legal_aid": "https://legalaid.gov.in"
+    },
+    "priority": 40,
+    "active": true
+  }
+]

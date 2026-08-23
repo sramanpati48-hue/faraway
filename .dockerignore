@@ -1,0 +1,54 @@
+# Frontends and mobile (not needed for the API container)
+web_app/
+mobile/
+hf_space/
+reference/
+.hf_space_repo/
+hf_space_repo/
+
+# Local dev artifacts
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets — pass via Cloud Run env / Secret Manager
+.env
+.env.*
+agents/.env
+backend/agents/.env
+*firebase-adminsdk*.json
+**/*firebase-adminsdk*.json
+
+# Git and IDE
+.git/
+.gitignore
+.vscode/
+.cursor/
+
+# Tests, scripts, docs, and misc dev files
+scripts/
+tests/
+docs/
+test_*.py
+debug_*.py
+seed_*.py
+ws_output_utf8.txt
+*.md
+graph_visualizer.html
+graphify-out/
+start_dev.sh
+start_dev.ps1
+ssh_setup.md
+ngrok.exe
+models.txt
+debug_recording.webm
+
+# Node (frontend deps)
+node_modules/
+package-lock.json

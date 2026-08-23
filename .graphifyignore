@@ -1,0 +1,15 @@
+# Graphify Ignore Rules
+node_modules/
+**/node_modules/
+.cache/
+cache/
+**/cache/
+__pycache__/
+**/__pycache__/
+*.pyc
+venv/
+.venv/
+.next/
+dist/
+build/
+graphify-out/cache/
