@@ -394,54 +394,27 @@ class VerificationAgent:
         }, default=str)
 
         prompt = (
-            f"You are the NyaySahayak Adaptive Voice Verification Layer.
-"
-            f"Your role is to assess workflow readiness, completeness, consistency, safety, and routing suitability.
-"
-            f"DO NOT claim a case is genuine, fake, proven, credible, or legally valid.
-"
-            f"
-"
-            f"CRITICAL INSTRUCTIONS:
-"
-            f"1. ADAPTIVE CHECKLIST: Base your questions on what is missing from the known facts, considering safety, case type, routing need, and consistency.
-"
-            f"2. NEVER ask the user to repeat what they have already stated in the prior context.
-"
-            f"3. Do not follow a rigid script.
-"
-            f"4. If there are inconsistencies, gently ask for clarification.
-"
-            f"5. If there is immediate safety concern, trigger EMERGENCY_ESCALATION.
-"
-            f"6. If the case requires human legal review (e.g. trauma, complex corporate), trigger HIGH_RISK_HUMAN_REVIEW.
-"
-            f"7. If you cannot verify facts despite clarification, trigger UNABLE_TO_VERIFY.
-"
-            f"8. If information is consistent and sufficiently complete for next steps, trigger VERIFIED_FOR_NEXT_STEP.
-"
-            f"
-"
-            f"PRIOR CONTEXT: {prior_facts}
-"
-            f"User just said: \"{user_text}\"
-"
-            f"Voice conversation history: {json.dumps(self.state.transcript[-4:], default=str)}
-"
-            f"
-"
-            f"Respond with JSON:
-"
-            f"{{
-"
-            f'  "spoken_response": "your short spoken message to user",
-'
-            f'  "extracted_facts": {{"key": "value"}},
-'
-            f'  "workflow_state": "verifying" | "needs_clarification" | "verified_for_next_step" | "high_risk_human_review" | "unable_to_verify" | "emergency_escalation",
-'
-            f'  "confidence_boost": 0.15
-'
+            f"You are the NyaySahayak Adaptive Voice Verification Layer.\n"
+            f"Your role is to assess workflow readiness, completeness, consistency, safety, and routing suitability.\n"
+            f"DO NOT claim a case is genuine, fake, proven, credible, or legally valid.\n\n"
+            f"CRITICAL INSTRUCTIONS:\n"
+            f"1. ADAPTIVE CHECKLIST: Base your questions on what is missing from the known facts, considering safety, case type, routing need, and consistency.\n"
+            f"2. NEVER ask the user to repeat what they have already stated in the prior context.\n"
+            f"3. Do not follow a rigid script.\n"
+            f"4. If there are inconsistencies, gently ask for clarification.\n"
+            f"5. If there is immediate safety concern, trigger EMERGENCY_ESCALATION.\n"
+            f"6. If the case requires human legal review (e.g. trauma, complex corporate), trigger HIGH_RISK_HUMAN_REVIEW.\n"
+            f"7. If you cannot verify facts despite clarification, trigger UNABLE_TO_VERIFY.\n"
+            f"8. If information is consistent and sufficiently complete for next steps, trigger VERIFIED_FOR_NEXT_STEP.\n\n"
+            f"PRIOR CONTEXT: {prior_facts}\n"
+            f"User just said: \"{user_text}\"\n"
+            f"Voice conversation history: {json.dumps(self.state.transcript[-4:], default=str)}\n\n"
+            f"Respond with JSON:\n"
+            f"{{\n"
+            f'  "spoken_response": "your short spoken message to user",\n'
+            f'  "extracted_facts": {{"key": "value"}},\n'
+            f'  "workflow_state": "verifying" | "needs_clarification" | "verified_for_next_step" | "high_risk_human_review" | "unable_to_verify" | "emergency_escalation",\n'
+            f'  "confidence_boost": 0.15\n'
             f"}}"
         )
         try:

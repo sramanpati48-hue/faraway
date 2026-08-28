@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import Image from "next/image";
 import {
   Mic,
   MicOff,
@@ -17,6 +18,7 @@ import {
   UserCheck,
   ArrowRight,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -631,218 +633,164 @@ function VoiceModeratorInner({
         </div>
 
       ) : (
-        // Active LiveKit Voice Moderator Room UI
-        <div className="rounded-2xl border-2 border-emerald-600/30 bg-white p-5 sm:p-6 shadow-md space-y-4 ring-1 ring-emerald-500/10">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="relative flex size-9 items-center justify-center rounded-full bg-emerald-100 text-[#00634B]">
-                <Volume2 className="size-5" />
-                {isAgentSpeaking && (
-                  <span className="absolute -top-1 -right-1 flex size-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full size-3 bg-emerald-600"></span>
-                  </span>
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-slate-900 font-serif">
-                    Voice Moderator Session
-                  </span>
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-200">
-                    LiveKit Cloud Scoped · Case #{caseId.slice(0, 8)}
-                  </span>
+        // Active LiveKit Voice Moderator Room UI (Avatar Centric Modal)
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-0 sm:p-6 animate-in fade-in zoom-in-95 duration-300">
+           
+           {/* Mobile-proportioned App Frame */}
+           <div className="relative w-full h-full sm:w-[420px] sm:max-h-[850px] sm:h-[90vh] sm:rounded-[3rem] sm:border-[6px] border-slate-800 overflow-hidden bg-slate-950 shadow-2xl flex flex-col justify-between">
+             
+             {/* The Avatar Background */}
+             <div className={cn("absolute inset-0 z-0 overflow-hidden transition-all duration-700 ease-in-out", 
+                isAgentSpeaking ? "scale-[1.02] shadow-[inset_0_0_80px_rgba(74,222,128,0.2)]" : "scale-100"
+             )}>
+               <Image 
+                 src="/avatar.jpg" 
+                 alt="Voice Moderator Avatar" 
+                 fill 
+                 className={cn("object-cover object-top transition-transform duration-[3s] ease-in-out", 
+                   isAgentSpeaking ? "scale-105" : "scale-100"
+                 )} 
+                 priority 
+               />
+               {/* Gradients for text readability */}
+               <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-transparent to-slate-950/90" />
+               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+             </div>
+
+             {/* Header */}
+             <div className="relative z-20 w-full p-5 flex justify-between items-start">
+                <div className="flex flex-col gap-1.5">
+                   <span className="text-white font-semibold text-lg drop-shadow-md tracking-tight font-serif">Voice Moderator</span>
+                   <div className="flex items-center gap-2 text-xs text-white/70 font-medium">
+                      <div className="flex items-center gap-1.5 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30 backdrop-blur-sm">
+                        <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[9px] text-emerald-100 uppercase tracking-wider">LiveKit Active</span>
+                      </div>
+                   </div>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Active Specialist: <strong className="text-slate-700">{activeSubAgent}</strong> · Confidence:{" "}
-                  <strong>{(currentScore * 100).toFixed(0)}%</strong>
-                </p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleEndSession}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-red-600 transition-colors cursor-pointer"
-            >
-              <PhoneOff className="size-3.5 text-red-500" />
-              <span>End & Save</span>
-            </button>
-          </div>
-
-          {/* Escalation Alert Banner */}
-          {escalationNotice && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2 animate-in fade-in duration-300">
-              <ShieldAlert className="size-4 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="block font-semibold text-amber-950">
-                  NyayGuide Human Specialist Notified
-                </strong>
-                <span>
-                  A handoff packet has been automatically dispatched to the human support queue for priority review.
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Speech Notice / Retry Banner */}
-          {speechNotice && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 flex items-center justify-between gap-2 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="size-4 text-amber-600 shrink-0" />
-                <span>{speechNotice}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSpeechNotice(null)}
-                className="text-amber-700 hover:text-amber-900 font-bold px-1.5 py-0.5 rounded cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* Live Transcript Pane */}
-          <div className="max-h-56 min-h-32 overflow-y-auto space-y-2.5 rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs custom-scrollbar">
-            {spokenMessages.map((m, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  "flex flex-col gap-0.5 rounded-lg p-2.5 max-w-[85%]",
-                  m.role === "assistant"
-                    ? "bg-white border border-slate-200 text-slate-800 self-start"
-                    : "bg-[#00634B] text-white self-end ml-auto"
-                )}
-              >
-                <div className="flex items-center justify-between gap-2 text-[10px] opacity-70">
-                  <span>{m.role === "assistant" ? m.agent || "Voice Moderator" : "You"}</span>
-                  <span>{m.time}</span>
-                </div>
-                <p className="leading-relaxed font-sans">{m.text}</p>
-              </div>
-            ))}
-            {isTranscribing && (
-              <div className="flex items-center gap-2 text-xs text-emerald-700 italic pt-1 animate-pulse">
-                <Loader2 className="size-3 animate-spin" />
-                <span>Transcribing your speech with Sarvam AI...</span>
-              </div>
-            )}
-            {isAgentSpeaking && !isTranscribing && (
-              <div className="flex items-center gap-2 text-xs text-emerald-700 italic pt-1">
-                <Loader2 className="size-3 animate-spin" />
-                <span>Voice Moderator is speaking...</span>
-              </div>
-            )}
-            <div ref={conversationEndRef} />
-          </div>
-
-          {/* NyayGuide Confirmation Card (Pre-Confirmation Triggered via Voice Action) */}
-          {nyayGuideConfirmation && (
-            <div className="pt-2 animate-in fade-in zoom-in-95 duration-300">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Review & Confirm Physical Assistance Request
-                </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setNyayGuideConfirmation(null);
-                    setSpeechNotice("You can continue with digital voice guidance.");
-                  }}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                  onClick={handleEndSession}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white/90 hover:bg-red-500/40 hover:text-red-100 hover:border-red-500/50 transition-all cursor-pointer shadow-sm"
                 >
-                  Dismiss
+                  <PhoneOff className="size-3.5" />
+                  <span>End</span>
                 </button>
-              </div>
-              <NyayGuideDispatchCard
-                caseId={caseId}
-                structuredReport={contextBuildingResult}
-                initialAssistanceType={nyayGuideConfirmation.assistance_type}
-                initialSafeTaskSummary={nyayGuideConfirmation.safe_task_summary}
-                onClose={() => {
-                  setNyayGuideConfirmation(null);
-                  setSpeechNotice("You can continue with digital voice guidance.");
-                }}
-                onRequestCreated={(req) => {
-                  console.log("[Voice Moderator] NyayGuide request created:", req.id);
-                }}
-                onRequestCancelled={() => {
-                  setNyayGuideConfirmation(null);
-                  setSpeechNotice("You can continue with digital voice guidance.");
-                }}
-              />
-            </div>
-          )}
+             </div>
 
-          {/* Language Selector & Voice Interaction Controls */}
-          <div className="flex flex-col items-center gap-3 pt-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-              <span>Language:</span>
-              <select
-                value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-                disabled={isRecording || isTranscribing}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                <option value="en-IN">English (en-IN)</option>
-                <option value="hi-IN">Hindi (hi-IN)</option>
-                <option value="bn-IN">Bengali (bn-IN)</option>
-                <option value="unknown">Auto / Code-Mixed</option>
-              </select>
-            </div>
+             {/* Banners & Transcript */}
+             <div className="relative z-10 w-full flex-1 flex flex-col justify-end p-5 pb-0 pointer-events-none">
+                
+                {speechNotice && (
+                  <div className="mb-3 rounded-2xl border border-amber-500/30 bg-amber-500/20 backdrop-blur-md p-3 text-xs text-amber-50 flex items-center justify-between gap-3 animate-in fade-in duration-200 pointer-events-auto">
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle className="size-4 text-amber-300 shrink-0" />
+                      <span className="font-medium opacity-90">{speechNotice}</span>
+                    </div>
+                    <button type="button" onClick={() => setSpeechNotice(null)} className="text-amber-200 hover:text-white font-bold p-1">✕</button>
+                  </div>
+                )}
 
-            <div className="flex items-center justify-center gap-4">
-              {(() => {
-                const orbState: VoiceOrbState =
-                  isRecording ? "listening" :
-                  isTranscribing ? "processing" :
-                  isAgentSpeaking ? "speaking" :
-                  "idle";
+                {/* Transcript Pane */}
+                <div className="w-full max-h-[30vh] overflow-y-auto space-y-3 pointer-events-auto custom-scrollbar no-scrollbar mask-image-top pb-4">
+                  {spokenMessages.map((m, idx) => (
+                    <div key={idx} className={cn("flex flex-col gap-1 max-w-[90%] animate-in slide-in-from-bottom-2 fade-in duration-300", m.role === "assistant" ? "self-start" : "self-end items-end")}>
+                      <span className={cn("text-[9px] font-bold uppercase tracking-wider", m.role === "assistant" ? "text-emerald-400 pl-1" : "text-white/50 pr-1")}>
+                        {m.role === "assistant" ? m.agent || "Verification Agent" : "You"}
+                      </span>
+                      <div className={cn("rounded-2xl px-3.5 py-2 text-sm leading-relaxed backdrop-blur-md shadow-sm", m.role === "assistant" ? "bg-black/40 text-white border border-white/10 rounded-tl-sm" : "bg-emerald-600/90 text-white border border-emerald-500/30 rounded-tr-sm")}>
+                        {m.text}
+                      </div>
+                    </div>
+                  ))}
                   
-                return (
-                  <VoiceOrbButton
-                    state={orbState}
-                    onPressStart={startRecording}
-                    onPressEnd={stopRecording}
-                  />
-                );
-              })()}
-            </div>
+                  {isTranscribing && (
+                    <div className="flex items-center gap-2 text-xs text-white/50 italic pt-2 animate-pulse">
+                      <Loader2 className="size-3 animate-spin" /><span>Transcribing...</span>
+                    </div>
+                  )}
+                  {isAgentSpeaking && !isTranscribing && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-400 italic pt-2 animate-pulse">
+                      <Volume2 className="size-3" /><span>Speaking...</span>
+                    </div>
+                  )}
+                  <div ref={conversationEndRef} className="h-1" />
+                </div>
+             </div>
 
-            <p className="text-center text-[11px] text-slate-500 font-medium">
-              {isRecording
-                ? "Listening... Release button when done speaking"
-                : isTranscribing
-                ? "Transcribing with Sarvam Saaras v3..."
-                : isAgentSpeaking
-                ? "Voice Moderator is responding..."
-                : "Press & hold the microphone button to speak"}
-            </p>
+             {/* Bottom Controls */}
+             <div className="relative z-20 w-full p-5 pt-8 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent flex flex-col items-center gap-5">
+                
+                {/* Custom Sleek Push-to-Talk Button (Replacing the buggy green square) */}
+                <button
+                  type="button"
+                  onMouseDown={startRecording}
+                  onMouseUp={stopRecording}
+                  onTouchStart={startRecording}
+                  onTouchEnd={stopRecording}
+                  onMouseLeave={isRecording ? stopRecording : undefined}
+                  className={cn(
+                    "relative flex items-center justify-center size-20 rounded-full shadow-2xl transition-all duration-300 ease-out cursor-pointer",
+                    isRecording 
+                      ? "bg-emerald-500 scale-95 shadow-[0_0_40px_rgba(16,185,129,0.5)]" 
+                      : "bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/20 hover:scale-105"
+                  )}
+                >
+                  {isRecording ? (
+                    <Mic className="size-8 text-white animate-pulse" />
+                  ) : isTranscribing ? (
+                    <Loader2 className="size-8 text-white/70 animate-spin" />
+                  ) : isAgentSpeaking ? (
+                    <Volume2 className="size-8 text-emerald-400 animate-pulse" />
+                  ) : (
+                    <Mic className="size-8 text-white/80" />
+                  )}
+                  
+                  {/* Outer ripple rings when idle/listening */}
+                  {isRecording && (
+                     <>
+                       <div className="absolute inset-0 rounded-full border border-emerald-400/50 animate-ping" />
+                       <div className="absolute -inset-4 rounded-full border border-emerald-400/20 animate-ping delay-150" />
+                     </>
+                  )}
+                </button>
 
-            
-            {/* Action buttons */}
-            <div className="w-full flex items-center justify-center gap-4 pt-2">
-              <button
-                type="button"
-                onClick={() => setSpeechNotice("Please try speaking into the microphone again.")}
-                className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-[#00634B] transition-colors"
-              >
-                <RefreshCw className="size-3" />
-                Retry Microphone
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setSpeechNotice("Connecting you to assisted digital support...")}
-                className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-[#00634B] transition-colors"
-              >
-                <MessageSquare className="size-3" />
-                Assisted Support Options
-              </button>
-            </div>
-    
-          </div>
+                {/* Minimal Status Text */}
+                <p className={cn("text-[11px] font-medium tracking-wide h-4 transition-all duration-300", 
+                  isRecording ? "text-emerald-400 animate-pulse" : "text-white/40"
+                )}>
+                    {isRecording ? "Listening... Release when done" : isTranscribing ? "Processing audio..." : isAgentSpeaking ? "Agent is speaking" : "Hold button to speak"}
+                </p>
+
+                {/* Action Bar */}
+                <div className="flex w-full items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-[11px] text-white/60 bg-white/5 backdrop-blur-md border border-white/10 px-3 py-2 rounded-full cursor-pointer hover:bg-white/10 transition-colors">
+                    <select
+                      value={selectedLanguage}
+                      onChange={(e) => setSelectedLanguage(e.target.value)}
+                      disabled={isRecording || isTranscribing}
+                      className="bg-transparent font-medium text-white outline-none cursor-pointer appearance-none text-center"
+                    >
+                      <option value="en-IN" className="text-black">English</option>
+                      <option value="hi-IN" className="text-black">Hindi</option>
+                      <option value="bn-IN" className="text-black">Bengali</option>
+                      <option value="unknown" className="text-black">Auto</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setSpeechNotice("Please try speaking into the microphone again.")} className="flex items-center justify-center size-9 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+                      <RefreshCw className="size-4" />
+                    </button>
+                    <button type="button" onClick={handleEndSession} className="flex items-center justify-center size-9 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+                      <MessageSquare className="size-4" />
+                    </button>
+                  </div>
+                </div>
+             </div>
+
+           </div>
         </div>
       )}
     </div>
