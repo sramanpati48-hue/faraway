@@ -48,7 +48,7 @@ export function FemaleNyayGuidePanel({ profiles, caseId, userId, onConnect, onCl
     setError(null);
     try {
       if (caseId) {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         let res = await fetch(`${baseUrl}/api/cases/${caseId}/assign-female-nyayguide`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

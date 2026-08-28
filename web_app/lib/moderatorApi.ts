@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 function authHeaders(): HeadersInit {
   if (typeof window === "undefined") return {};
@@ -114,6 +114,9 @@ export async function resolveIntervention(body: {
   moderator_notes?: string;
   moderator_report?: Record<string, unknown>;
   moderator_suggested_links?: unknown[];
+  review_outcome?: string;
+  nyayguide_support_needed?: boolean;
+  nyayguide_assistance_type?: string;
 }): Promise<void> {
   const res = await fetch(`${API_URL}/api/interventions/resolve`, {
     method: "POST",

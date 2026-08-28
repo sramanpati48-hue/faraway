@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const ACCESS_KEY = "nyaya_access_token";
 const REFRESH_KEY = "nyaya_refresh_token";
@@ -109,12 +109,18 @@ export async function authenticatedNyayGuideFetch<T = any>(
 
   const status = res.status;
   const detail = data?.detail;
-  const rawMessage =
-    typeof detail === "string"
-      ? detail
-      : Array.isArray(detail)
-        ? detail.map((d: any) => (typeof d === "string" ? d : d?.msg || JSON.stringify(d))).join("; ")
-        : "";
+  let errorCode: string | undefined;
+  let rawMessage = "";
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    errorCode = typeof detail.code === "string" ? detail.code : undefined;
+    rawMessage = typeof detail.message === "string" ? detail.message : "";
+  } else if (typeof detail === "string") {
+    rawMessage = detail;
+  } else if (Array.isArray(detail)) {
+    rawMessage = detail
+      .map((d: any) => (typeof d === "string" ? d : d?.msg || JSON.stringify(d)))
+      .join("; ");
+  }
 
   // 401: Token expired or invalid -> attempt token refresh exactly once
   if (status === 401) {
@@ -137,8 +143,15 @@ export async function authenticatedNyayGuideFetch<T = any>(
     );
   }
 
-  // 409: Conflict (request already active)
+  // 409: Conflict (request already active or eligibility gate blocked)
   if (status === 409) {
+    if (errorCode) {
+      throw new NyayGuideApiError(
+        rawMessage || "This request cannot be completed right now.",
+        409,
+        errorCode
+      );
+    }
     throw new NyayGuideApiError(
       rawMessage || "A NyayGuide request is already active for this case.",
       409,

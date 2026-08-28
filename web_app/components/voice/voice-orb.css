@@ -1,0 +1,95 @@
+/* voice-orb.css */
+.voice-orb {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-orb__rings {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #0f5132,
+    #14833b,
+    #2f9e44,
+    #d4a017,
+    #14833b,
+    #0f5132
+  );
+  filter: blur(10px);
+  opacity: 0.55;
+  animation: voice-orb-rotate 6s linear infinite;
+}
+
+.voice-orb__rings::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: inherit;
+  filter: blur(6px);
+  opacity: 0.7;
+}
+
+.voice-orb__pill {
+  position: relative;
+  width: 34px;
+  height: 52px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.15);
+  z-index: 2;
+}
+
+.voice-orb__dot {
+  position: absolute;
+  bottom: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  z-index: 3;
+}
+
+@keyframes voice-orb-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* State variants */
+.voice-orb--idle .voice-orb__rings {
+  animation-duration: 12s;
+  opacity: 0.35;
+}
+
+.voice-orb--listening .voice-orb__rings {
+  animation-duration: 3.5s;
+  opacity: 0.7;
+}
+
+.voice-orb--processing .voice-orb__rings {
+  animation-duration: 1.6s;
+  opacity: 0.85;
+}
+
+.voice-orb--speaking .voice-orb__rings {
+  animation-duration: 2.2s;
+  opacity: 0.6;
+}
+
+.voice-orb--listening .voice-orb__dot,
+.voice-orb--speaking .voice-orb__dot {
+  animation: voice-orb-pulse 1s ease-in-out infinite;
+}
+
+@keyframes voice-orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 1; }
+}

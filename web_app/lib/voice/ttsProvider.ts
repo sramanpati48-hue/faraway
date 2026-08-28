@@ -11,7 +11,7 @@
  *    (pace=0.85, soothing speaker persona).
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export interface VoiceProfile {
   name?: string;

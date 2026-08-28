@@ -16,7 +16,7 @@ export function PDFDownloadPanel({
     stackedAboveTab = false,
 }: PDFDownloadPanelProps) {
     const handleDownload = () => {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         const endpointUrl = caseId ? `${API_URL}/api/cases/${encodeURIComponent(caseId)}/pdf` : null;
         const targetUrl = endpointUrl || initialPdfUrl;
         if (targetUrl) {

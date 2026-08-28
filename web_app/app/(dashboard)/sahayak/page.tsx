@@ -45,7 +45,7 @@ const RISK_COLORS: Record<string, string> = {
   LOW: "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 /**
  * Safely converts any structured_report field to a displayable string.
@@ -276,7 +276,7 @@ function SahayakDashboardInner() {
   useEffect(() => {
     if (!user) return;
 
-    const wsBaseUrl = (API_URL || "http://localhost:8000").replace(/^http/, "ws");
+    const wsBaseUrl = (API_URL || "http://127.0.0.1:8000").replace(/^http/, "ws");
     let wsDestroyed = false;
     let wsReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     let ws: WebSocket;

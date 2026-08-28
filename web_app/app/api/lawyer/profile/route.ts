@@ -4,7 +4,7 @@ import path from "path";
 import os from "os";
 
 // The backend URL should ideally come from env, defaulting to localhost for now
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export async function GET(req: NextRequest) {
     const uid = req.nextUrl.searchParams.get("uid");

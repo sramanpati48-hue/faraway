@@ -703,6 +703,7 @@ def resolve_intervention_case(
     moderator_notes: Optional[str] = None,
     moderator_report: Optional[dict] = None,
     moderator_suggested_links: Optional[list] = None,
+    **_ignored,
 ):
     """Resolves a pending intervention case by adding the moderator's text and options, and updates the chat session."""
     if not supabase:

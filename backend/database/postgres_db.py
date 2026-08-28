@@ -1244,6 +1244,145 @@ def search_lawyers_by_specialization(incident_type: str, limit: int = 5):
         return []
 
 
+_MODERATOR_OUTCOME_WORKFLOW = {
+    "approved_for_next_step": "MODERATOR_APPROVED",
+    "digital_guidance": "MODERATOR_APPROVED",
+    "nyayguide_recommended": "MODERATOR_APPROVED",
+    "unable_to_verify": "UNABLE_TO_VERIFY",
+    "emergency_escalation": "EMERGENCY_ESCALATION",
+}
+
+
+def _report_flag_truthy(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "required", "active"}
+    return bool(value)
+
+
+def _load_case_structured_report(case_id: str) -> Optional[dict]:
+    row = execute_one(
+        "SELECT structured_report, ai_verification_status FROM cases WHERE id = %s",
+        (case_id,),
+    )
+    if not row:
+        return None
+    report = row.get("structured_report")
+    if isinstance(report, str):
+        try:
+            report = json.loads(report)
+        except Exception:
+            report = {}
+    if not isinstance(report, dict):
+        report = {}
+    if not report.get("ai_verification_status") and row.get("ai_verification_status"):
+        report["ai_verification_status"] = row["ai_verification_status"]
+    return report
+
+
+def _apply_moderator_review_outcome(
+    case_id: str,
+    *,
+    review_outcome: Optional[str] = None,
+    support_needed: Optional[bool] = None,
+    assistance_type: Optional[str] = None,
+) -> Optional[dict]:
+    """Persist the moderator's canonical workflow outcome onto the case row.
+
+    Emergency escalation is non-overridable: an active EMERGENCY_ESCALATION
+    state is never replaced with MODERATOR_APPROVED. MODERATOR_APPROVED does
+    not imply NyayGuide support — support is only persisted when the outcome
+    or an explicit flag says so. Returns a fresh server-authoritative case
+    snapshot (workflow_state, structured_report, typed suggested_actions).
+    """
+    from backend.services.nyayguide_eligibility import build_nyayguide_suggestion
+
+    if not case_id:
+        return None
+
+    report = _load_case_structured_report(case_id)
+    if report is None:
+        return None
+
+    outcome = str(review_outcome or "").strip().lower()
+    workflow_now = str(report.get("workflow_state") or "").strip().upper()
+    emergency_active = (
+        workflow_now == "EMERGENCY_ESCALATION"
+        or _report_flag_truthy(report.get("emergency_escalation_active"))
+    )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if emergency_active:
+        # Fail closed: never downgrade an active emergency to approved.
+        snapshot = {
+            "workflow_state": "EMERGENCY_ESCALATION",
+            "ai_verification_status": report.get("ai_verification_status") or "pending",
+            "nyayguide_support_needed": False,
+            "suggested_actions": [],
+            "version": now_iso,
+        }
+        snapshot["structured_report"] = {**report, "workflow_state": "EMERGENCY_ESCALATION"}
+        return snapshot
+
+    workflow_state = _MODERATOR_OUTCOME_WORKFLOW.get(outcome, "MODERATOR_APPROVED")
+
+    if support_needed is not None:
+        nyayguide_needed = bool(support_needed)
+    else:
+        # Explicit outcome is the only auto-enable path; default fail-closed.
+        nyayguide_needed = outcome == "nyayguide_recommended"
+
+    report["workflow_state"] = workflow_state
+    report["nyayguide_support_needed"] = nyayguide_needed
+    if nyayguide_needed and assistance_type:
+        report["nyayguide_assistance_type"] = str(assistance_type)
+    elif not nyayguide_needed:
+        report.pop("nyayguide_assistance_type", None)
+
+    verification_status = report.get("ai_verification_status") or "pending"
+    if workflow_state == "MODERATOR_APPROVED":
+        # Human review concluded: the case is verified for its next step even
+        # though the original AI pass flagged it.
+        verification_status = "verified_for_next_step"
+        report["ai_verification_status"] = verification_status
+    elif workflow_state == "UNABLE_TO_VERIFY" and verification_status == "flagged":
+        verification_status = "rejected"
+        report["ai_verification_status"] = verification_status
+
+    report["moderator_review_outcome"] = outcome or (
+        "approved_for_next_step" if workflow_state == "MODERATOR_APPROVED" else outcome
+    )
+    report["moderator_reviewed_at"] = now_iso
+
+    execute_void(
+        """
+        UPDATE cases
+        SET structured_report = %s::jsonb,
+            ai_verification_status = %s,
+            updated_at = now()
+        WHERE id = %s
+        """,
+        (_json(report), verification_status, case_id),
+    )
+
+    suggested_actions = []
+    if workflow_state == "MODERATOR_APPROVED" and nyayguide_needed:
+        action = build_nyayguide_suggestion(
+            report, support_needs_met=True, case_id=str(case_id)
+        )
+        if action is not None:
+            suggested_actions.append(action)
+
+    return {
+        "workflow_state": workflow_state,
+        "structured_report": report,
+        "ai_verification_status": verification_status,
+        "nyayguide_support_needed": nyayguide_needed,
+        "suggested_actions": suggested_actions,
+        "version": now_iso,
+    }
+
+
 def resolve_intervention_case(
     case_id: str,
     moderator_text: str,
@@ -1254,6 +1393,9 @@ def resolve_intervention_case(
     moderator_notes: Optional[str] = None,
     moderator_report: Optional[dict] = None,
     moderator_suggested_links: Optional[list] = None,
+    review_outcome: Optional[str] = None,
+    nyayguide_support_needed: Optional[bool] = None,
+    nyayguide_assistance_type: Optional[str] = None,
 ):
     try:
         normalized_options = list(options or [])
@@ -1371,7 +1513,14 @@ def resolve_intervention_case(
         except Exception as upd_err:
             print(f"Warning: moderator_updatation complete failed: {upd_err}")
 
-        return {
+        snapshot = _apply_moderator_review_outcome(
+            case_id,
+            review_outcome=review_outcome,
+            support_needed=nyayguide_support_needed,
+            assistance_type=nyayguide_assistance_type,
+        )
+
+        result = {
             "success": True,
             "user_id": user_id,
             "session_id": session_id,
@@ -1381,6 +1530,9 @@ def resolve_intervention_case(
             "routing_recommendation": routing_recommendation,
             "moderator_id": resolved_by,
         }
+        if isinstance(snapshot, dict):
+            result["case_snapshot"] = snapshot
+        return result
     except Exception as e:
         print(f"Error resolving intervention case: {e}")
         return False

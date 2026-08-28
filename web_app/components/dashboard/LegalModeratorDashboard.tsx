@@ -178,6 +178,9 @@ export default function LegalModeratorDashboard() {
   ]);
   const [newOptionLabel, setNewOptionLabel] = useState("");
   const [includeRoutingRecommendation, setIncludeRoutingRecommendation] = useState(true);
+  const [reviewOutcome, setReviewOutcome] = useState("approved_for_next_step");
+  const [nyayguideSupport, setNyayguideSupport] = useState(false);
+  const [assistanceType, setAssistanceType] = useState("complaint_filing_support");
 
   useEffect(() => setMounted(true), []);
 
@@ -201,7 +204,7 @@ export default function LegalModeratorDashboard() {
     };
     void load();
 
-    const wsBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
+    const wsBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(
       /^http/,
       "ws"
     );
@@ -301,6 +304,9 @@ export default function LegalModeratorDashboard() {
     setModeratorLinks(linksToLines(selectedCase.agent_suggested_links));
     const fromAgent = asOptions(selectedCase.agent_suggested_actions);
     if (fromAgent.length > 0) setOptions(fromAgent);
+    setReviewOutcome("approved_for_next_step");
+    setNyayguideSupport(false);
+    setAssistanceType("complaint_filing_support");
   }, [selectedCase]);
 
   const handleResolve = async () => {
@@ -322,6 +328,12 @@ export default function LegalModeratorDashboard() {
           summary: moderatorSummary,
         },
         moderator_suggested_links: linesToLinks(moderatorLinks),
+        review_outcome:
+          nyayguideSupport && reviewOutcome === "approved_for_next_step"
+            ? "nyayguide_recommended"
+            : reviewOutcome,
+        nyayguide_support_needed: reviewOutcome === "unable_to_verify" ? false : nyayguideSupport,
+        nyayguide_assistance_type: nyayguideSupport ? assistanceType : undefined,
       });
       setCases((prev) => prev.filter((c) => c.case_id !== selectedCase.case_id));
       setSelectedCase(null);
@@ -636,6 +648,49 @@ export default function LegalModeratorDashboard() {
                         rows={5}
                       />
                     </div>
+
+                    <div>
+                      <label className="text-xs font-black text-gray-600 block mb-1.5">
+                        Review outcome
+                      </label>
+                      <select
+                        value={reviewOutcome}
+                        onChange={(e) => setReviewOutcome(e.target.value)}
+                        className="w-full bg-[#F8F9FA] border border-gray-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#00634B]/30 text-sm"
+                      >
+                        <option value="approved_for_next_step">Approve for next step (digital guidance)</option>
+                        <option value="nyayguide_recommended">Approve — NyayGuide support recommended</option>
+                        <option value="unable_to_verify">Unable to verify / reject</option>
+                      </select>
+                    </div>
+
+                    {reviewOutcome !== "unable_to_verify" && (
+                      <div className="rounded-xl border border-[#00634B]/20 bg-[#00634B]/5 p-3 space-y-2">
+                        <label className="flex items-center gap-2 text-xs font-bold text-[#0B3D2E]">
+                          <input
+                            type="checkbox"
+                            checked={nyayguideSupport}
+                            onChange={(e) => setNyayguideSupport(e.target.checked)}
+                          />
+                          On-ground NyayGuide support is needed
+                        </label>
+                        {nyayguideSupport && (
+                          <select
+                            value={assistanceType}
+                            onChange={(e) => setAssistanceType(e.target.value)}
+                            className="w-full bg-white border border-gray-200 p-2 rounded-lg outline-none focus:ring-2 focus:ring-[#00634B]/30 text-sm"
+                          >
+                            <option value="complaint_filing_support">Complaint filing support</option>
+                            <option value="document_support">Document support</option>
+                            <option value="office_navigation">Office navigation</option>
+                            <option value="digital_assistance">Digital assistance</option>
+                          </select>
+                        )}
+                        <p className="text-[11px] text-gray-500">
+                          Approving the case does not automatically enable NyayGuide. The citizen always confirms before any request is sent.
+                        </p>
+                      </div>
+                    )}
 
                     {selectedCase.routing_recommendation && (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">

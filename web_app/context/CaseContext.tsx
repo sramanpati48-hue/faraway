@@ -15,7 +15,7 @@ export interface LegalCase {
     type: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export const useCases = () => {
     const { user, role, loading: authLoading, accessToken } = useAuth() as any;

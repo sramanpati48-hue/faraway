@@ -17,12 +17,10 @@ import {
   UserCheck,
   ArrowRight,
   RefreshCw,
-  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   requestVoiceSessionToken,
-  sendVoiceTurn,
   sendVoiceAudioTurn,
   completeVoiceSession,
   VoiceSessionResponse,
@@ -37,6 +35,7 @@ import {
   getVoiceProfileForRiskFlags,
 } from "@/lib/voice/ttsProvider";
 import { Room, RoomEvent, ConnectionState } from "livekit-client";
+import { VoiceOrbButton, VoiceOrbState } from "./VoiceOrbButton";
 
 export interface VoiceModeratorPromptProps {
   caseId?: string | null;
@@ -193,8 +192,6 @@ function VoiceModeratorInner({
     safe_task_summary: string;
     escalation_reason?: string;
   } | null>(null);
-  const [textInput, setTextInput] = useState("");
-  const [isSendingText, setIsSendingText] = useState(false);
   const [currentScore, setCurrentScore] = useState<number>(
     contextBuildingResult?.context_building_confidence_score ||
     contextBuildingResult?.ai_verification_confidence ||
@@ -470,26 +467,6 @@ function VoiceModeratorInner({
       ? { ...voiceProfile, ...turnRes.voice_profile }
       : voiceProfile;
     await speakText(turnRes.spoken_response, turnProfile);
-  };
-
-  const handleSendTextTurn = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const trimmed = textInput.trim();
-    if (!trimmed || isSendingText || isAgentSpeaking) return;
-
-    setTextInput("");
-    setIsSendingText(true);
-    setSpeechNotice(null);
-    try {
-      const turnRes = await sendVoiceTurn(caseId, trimmed);
-      turnRes.user_transcript = trimmed;
-      await handleProcessTurnResult(turnRes);
-    } catch (err: any) {
-      console.error("[Voice Moderator] Text turn error:", err);
-      setSpeechNotice("Failed to send message. Please try again.");
-    } finally {
-      setIsSendingText(false);
-    }
   };
 
   const stopRecording = async () => {
@@ -816,28 +793,21 @@ function VoiceModeratorInner({
             </div>
 
             <div className="flex items-center justify-center gap-4">
-              <button
-                type="button"
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
-                disabled={isTranscribing || isAgentSpeaking}
-                className={cn(
-                  "relative flex items-center justify-center size-14 rounded-full font-semibold transition-all shadow-md cursor-pointer",
-                  isRecording
-                    ? "bg-red-600 text-white scale-110 ring-4 ring-red-200 animate-pulse"
-                    : isTranscribing || isAgentSpeaking
-                    ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                    : "bg-[#00634B] text-white hover:bg-[#004D3C]"
-                )}
-              >
-                {isTranscribing ? (
-                  <Loader2 className="size-6 animate-spin text-white" />
-                ) : (
-                  <Mic className="size-6" />
-                )}
-              </button>
+              {(() => {
+                const orbState: VoiceOrbState =
+                  isRecording ? "listening" :
+                  isTranscribing ? "processing" :
+                  isAgentSpeaking ? "speaking" :
+                  "idle";
+                  
+                return (
+                  <VoiceOrbButton
+                    state={orbState}
+                    onPressStart={startRecording}
+                    onPressEnd={stopRecording}
+                  />
+                );
+              })()}
             </div>
 
             <p className="text-center text-[11px] text-slate-500 font-medium">
@@ -849,25 +819,6 @@ function VoiceModeratorInner({
                 ? "Voice Moderator is responding..."
                 : "Press & hold the microphone button to speak"}
             </p>
-
-            {/* Text input fallback */}
-            <form onSubmit={handleSendTextTurn} className="w-full max-w-md flex items-center gap-2 pt-1">
-              <input
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Type to voice moderator (e.g. I want physical assistance)..."
-                disabled={isRecording || isTranscribing || isSendingText || isAgentSpeaking}
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-[#00634B] focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              />
-              <button
-                type="submit"
-                disabled={!textInput.trim() || isSendingText || isAgentSpeaking}
-                className="rounded-xl bg-[#00634B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#004D3C] disabled:opacity-50 transition-colors cursor-pointer"
-              >
-                {isSendingText ? <Loader2 className="size-3.5 animate-spin" /> : "Send"}
-              </button>
-            </form>
           </div>
         </div>
       )}

@@ -21,7 +21,7 @@ export function LawyerSuggestions() {
   useEffect(() => {
     const fetchLawyers = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/lawyers`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/lawyers`);
         if (res.ok) {
           const data = await res.json();
           const normalized = (data.lawyers || []).map((l: any) => {

@@ -49,7 +49,7 @@ export function FemaleLawyerPanel({ profiles, caseId, userId, onConnect, onClose
     setError(null);
     try {
       if (caseId) {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         const res = await fetch(`${baseUrl}/api/cases/${caseId}/assign-lawyer`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

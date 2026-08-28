@@ -14,6 +14,7 @@ from backend.agents.scam_match import match_case_to_mock_scams
 from backend.agents.question_processor import generate_follow_up_questions, detect_language, generate_sexual_offense_intake_questions
 from backend.agents.sexual_offense_keywords import has_sexual_offense_signal
 from backend.agents.response_sanitize import strip_classification_block
+from backend.services.nyayguide_eligibility import build_nyayguide_suggestion
 from backend.agents.so_call_flow import (
     compose_so_rights_message,
     consented_to_confirmation_call,
@@ -780,9 +781,8 @@ def report_generator_agent(state):
              # Do not append a custom Connect to Lawyer action here; we will handle it in the final satisfaction check instead.
              pass
 
-        # Default action — Nyay Guide always routes to sahayak node (SO flow replaces this list below).
-        if not is_sexual_offense:
-            actions.append({"label": "Connect to Nyay Guide", "node": "sahayak", "payload": "Request Human Help"})
+        # Default Nyay Guide action is emitted as a typed nyayguide_suggestion
+        # only after AI verification completes (see end of this agent).
 
         # Suggested actions live in the right-hand rail, not in the chat body.
         if is_sexual_offense:
@@ -1091,6 +1091,16 @@ def report_generator_agent(state):
                 )
             except Exception as verify_persist_err:
                 print(f"   ⚠️ update_case_ai_verification_status skipped: {verify_persist_err}")
+
+        if not is_sexual_offense and ai_verification_status == "verified":
+            structured_report["nyayguide_support_needed"] = True
+            nyayguide_suggestion = build_nyayguide_suggestion(
+                structured_report,
+                support_needs_met=bool(answers_collection_complete),
+                case_id=str(case_id) if "case_id" in locals() else None,
+            )
+            if nyayguide_suggestion and nyayguide_suggestion.get("enabled"):
+                actions.append(nyayguide_suggestion)
 
         # Final routing decision (AI END / nodal_guide / legal_moderator / sexual_offense)
         # Signal PDF generation when this is a final report pass (no more intake questions).

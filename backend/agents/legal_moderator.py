@@ -2,6 +2,11 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph import END
 import backend.database.supabase_db as supabase_db
 from backend import case_dispatcher
+from backend.services.nyayguide_eligibility import (
+    CODE_HUMAN_REVIEW_REQUIRED,
+    WORKFLOW_MODERATOR_APPROVED,
+    build_nyayguide_suggestion,
+)
 
 
 def _resolve_location(state) -> dict:
@@ -100,9 +105,31 @@ def legal_moderator_agent(state):
             k in incident for k in ("criminal", "missing", "kidnap", "assault", "theft", "robbery")
         )
         if is_criminalish and not options:
+            structured_report = {
+                **(structured_report if isinstance(structured_report, dict) else {}),
+                "workflow_state": WORKFLOW_MODERATOR_APPROVED,
+                "nyayguide_support_needed": True,
+            }
+            nyayguide_option = build_nyayguide_suggestion(
+                structured_report,
+                support_needs_met=True,
+                case_id=str(case_id) if case_id else None,
+            )
+            if nyayguide_option is None:
+                nyayguide_option = {
+                    "id": f"nyayguide_suggestion:{case_id}" if case_id else "nyayguide_suggestion",
+                    "kind": "nyayguide_suggestion",
+                    "label": "Connect to Nyay Guide",
+                    "node": "sahayak",
+                    "payload": "Request Human Help",
+                    "requires_user_confirmation": True,
+                    "enabled": False,
+                    "workflow_state": "HIGH_RISK_HUMAN_REVIEW",
+                    "blocked_reason": CODE_HUMAN_REVIEW_REQUIRED,
+                }
             options = [
                 {"label": "Recommend a lawyer", "node": "lawyer_forwarder", "payload": "Please recommend a lawyer for my case"},
-                {"label": "Connect to Nyay Guide", "node": "sahayak", "payload": "Request Human Help"},
+                nyayguide_option,
             ]
 
         try:

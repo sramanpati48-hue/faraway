@@ -9,7 +9,6 @@ from backend.database.auth_middleware import get_current_user, require_roles
 from backend.database.auth_service import (
     AuthError,
     admin_create_reset_code,
-    import_firebase_user,
     login,
     logout,
     refresh,
@@ -130,12 +129,4 @@ async def auth_admin_reset_code(
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
-@router.post("/import-firebase")
-async def auth_import_firebase(
-    body: ImportFirebaseBody,
-    user=Depends(require_roles("admin", "super_admin")),
-):
-    try:
-        return import_firebase_user(body.firebase_uid, body.email, body.role)
-    except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+

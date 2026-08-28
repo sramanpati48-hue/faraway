@@ -5,6 +5,7 @@ and Moderator/Admin Voice Audit Logs.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Form, Query, Header
 from fastapi.responses import StreamingResponse
@@ -31,11 +32,84 @@ from backend.voice.tts_service import (
     get_voice_profile_for_risk_flags,
     VoiceProfile,
 )
+from backend.services.emotion_service import advisory_for_turn
 
 router = APIRouter(tags=["voice-session"])
 
 # In-memory active workers keyed by case_id for active sessions
 _active_workers: Dict[str, VoiceModeratorAgentWorker] = {}
+
+# Explicit per-session emotion-detection consent (default: NOT granted).
+_emotion_consent_by_case: Dict[str, bool] = {}
+
+
+def _audit_emotion_soft_flag(case_id: str, annotation: Dict[str, Any]) -> None:
+    """Best-effort audit trail when an advisory soft priority flag is set."""
+    try:
+        import json as _json
+
+        from backend.database.postgres_pool import execute_void
+
+        execute_void(
+            """
+            INSERT INTO auth_audit_events (user_id, event_type, detail)
+            VALUES (%s, %s, %s::jsonb)
+            """,
+            (
+                None,
+                "voice_emotion_soft_flag",
+                _json.dumps({"case_id": case_id, "annotation": annotation}),
+            ),
+        )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "emotion soft-flag audit write failed (advisory flag still applied): case=%s",
+            case_id,
+        )
+
+
+def _apply_turn_emotion_advisory(
+    case_id: str,
+    result: Dict[str, Any],
+    *,
+    consented: bool,
+    audio_bytes: Optional[bytes] = None,
+) -> Dict[str, Any]:
+    """Applies advisory-only emotion effects to a turn response.
+
+    Never mutates verification/eligibility/credibility fields; permitted
+    effects are tone modulation, decision-log annotation for moderators,
+    and the audit entry for a soft priority flag.
+    """
+    effects = advisory_for_turn(
+        consented=consented,
+        audio_bytes=audio_bytes,
+        duration_seconds=(len(audio_bytes) / 32000.0) if audio_bytes else 0.0,
+    )
+    if not effects:
+        return result
+
+    if isinstance(result.get("voice_profile"), dict):
+        merged_tone = effects.get("tone_adjustment") or {}
+        if merged_tone:
+            result["voice_profile"] = {**result["voice_profile"], **merged_tone}
+
+    annotation = effects.get("moderator_annotation")
+    if annotation and "decision_log" in result.get("state", {}):
+        result["state"]["decision_log"] = list(result["state"]["decision_log"]) + [
+            {
+                "agent": "EmotionAdvisory",
+                "event": "soft_priority_flag" if effects.get("soft_priority_flag") else "annotation",
+                "reason": annotation.get("label"),
+                "signal": annotation.get("signal"),
+                "confidence": annotation.get("confidence"),
+            }
+        ]
+
+    if effects.get("soft_priority_flag"):
+        _audit_emotion_soft_flag(case_id, annotation or {})
+
+    return result
 
 
 class VoiceSessionRequest(BaseModel):
@@ -45,6 +119,7 @@ class VoiceSessionRequest(BaseModel):
     user_name: Optional[str] = Field("Citizen", description="Citizen display name")
     context_building: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Step 4 context building result object")
     transcript: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Existing chat transcript")
+    emotion_consent: Optional[bool] = Field(False, description="Explicit citizen consent for advisory voice-tone analysis")
 
 
 class VoiceTurnRequest(BaseModel):
@@ -84,6 +159,9 @@ async def get_or_create_voice_session(
 
     raw_session_id = payload.session_id if payload and payload.session_id else session_id or ""
     target_session_id = str(raw_session_id).strip() or None
+
+    emotion_consent = bool(payload.emotion_consent) if payload else False
+    _emotion_consent_by_case[target_case_id] = emotion_consent
 
     ctx_building = payload.context_building if payload and payload.context_building else {}
     transcript_list = payload.transcript if payload and payload.transcript else []
@@ -180,9 +258,11 @@ async def voice_session_audio_turn(
     case_id: str,
     file: UploadFile = File(...),
     language: str = Form("en-IN"),
+    emotion_consent: bool = Form(False),
 ):
     """
     Processes audio bytes using Sarvam Saaras v3 STT and runs the sub-agent reasoning turn.
+    Advisory voice-tone analysis runs only with explicit emotion_consent.
     """
     worker = _active_workers.get(case_id)
     if not worker:
@@ -206,10 +286,16 @@ async def voice_session_audio_turn(
         mime_type=file.content_type or "audio/webm",
         language=language,
     )
+    consent = emotion_consent or _emotion_consent_by_case.get(case_id, False)
     return {
         "status": result.get("status", "success"),
         "case_id": case_id,
-        **result,
+        **_apply_turn_emotion_advisory(
+            case_id,
+            result,
+            consented=consent,
+            audio_bytes=audio_bytes,
+        ),
     }
 
 

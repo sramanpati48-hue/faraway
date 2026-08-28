@@ -23,12 +23,13 @@ import backend.clash_service as clash_service
 from backend.clash_schemas import ClashAnswerRequest, ClashCaseInput, ClashSessionCreate
 from backend import case_dispatcher
 from backend.database.auth_middleware import get_current_user
+from backend.database.postgres_pool import DbConnectionError
 
 app = FastAPI(title="NyaySahayak API", description="AI Agentic Legal Assistant", root_path="/apis")
 
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
-import backend.database.firebase_db as firebase_db
+
 import backend.database.supabase_db as supabase_db
 import backend.database.vector_db as vdb
 from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse, Response
@@ -102,6 +103,11 @@ class UptimeRobotCompatMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(UptimeRobotCompatMiddleware)
+
+
+@app.exception_handler(DbConnectionError)
+async def db_connection_error_handler(request: StarletteRequest, exc: DbConnectionError):
+    return JSONResponse(status_code=503, content={"detail": f"Database unavailable: {exc}"})
 
 from backend.routes.auth_routes import router as auth_router
 from backend.routes.lawyer_chat_routes import router as lawyer_chat_router
@@ -341,30 +347,19 @@ async def websocket_sahayak_endpoint(websocket: WebSocket):
 @app.post("/api/auth/login")
 async def auth_login(payload: AuthPayload):
     """
-    Called by the frontend after a successful Firebase Auth sign-in to ensure 
-    the user record and role exists. Supabase is the primary source of truth;
-    Firebase is attempted with a short timeout and silently skipped if unavailable.
+    Called by the frontend after a successful Auth sign-in to ensure 
+    the user record and role exists. Supabase is the primary source of truth.
     """
     import asyncio
 
     # ── 1. Resolve existing role with Supabase precedence ──────────────────
-    # Supabase is the source of truth; Firebase role can be stale.
+    # Supabase is the source of truth.
     role_from_supabase = None
-    role_from_firebase = None
 
     try:
         role_from_supabase = await run_in_threadpool(supabase_db.get_user_role, payload.uid)
     except Exception:
         pass
-
-    if firebase_db.is_available():
-        try:
-            role_from_firebase = await asyncio.wait_for(
-                run_in_threadpool(firebase_db.get_user_role, payload.uid),
-                timeout=3.0
-            )
-        except (asyncio.TimeoutError, Exception):
-            pass
 
     requested_role = (payload.role or "").strip().lower() or None
     role_priority = {
@@ -388,15 +383,7 @@ async def auth_login(payload: AuthPayload):
         }
         return alias_map.get(raw, raw)
 
-    existing_role_candidates = [
-        _normalize_role_value(role_from_supabase),
-        _normalize_role_value(role_from_firebase),
-    ]
-    existing_role_candidates = [r for r in existing_role_candidates if r]
-    existing_role = None
-    if existing_role_candidates:
-        existing_role = max(existing_role_candidates, key=lambda r: role_priority.get(r, 0))
-
+    existing_role = _normalize_role_value(role_from_supabase)
     requested_role = _normalize_role_value(requested_role)
 
     # ── 3. Determine role and respond ──────────────────────────────────────
@@ -411,8 +398,6 @@ async def auth_login(payload: AuthPayload):
         # Explicit role change request: only allow non-downgrade transitions.
         if role_priority.get(requested_role, 0) >= role_priority.get(normalized_existing, 0):
             await run_in_threadpool(supabase_db.create_or_update_user, payload.uid, payload.email, requested_role)
-            if firebase_db.is_available():
-                asyncio.create_task(run_in_threadpool(firebase_db.create_user_record, payload.uid, payload.email, requested_role))
             return {"status": "success", "role": requested_role, "message": "User role updated"}
 
         # Reject downgrade attempts and return current role.
@@ -434,9 +419,6 @@ async def auth_login(payload: AuthPayload):
     except Exception:
         pass
 
-    # Firebase write — fire-and-forget in background so it doesn't delay response
-    if firebase_db.is_available():
-        asyncio.create_task(run_in_threadpool(firebase_db.create_user_record, payload.uid, payload.email, resolved_role))
     return {"status": "success", "role": resolved_role, "message": "User created/updated"}
 
 @app.post("/api/chat/history")
@@ -1089,6 +1071,9 @@ class ResolveInterventionPayload(BaseModel):
     moderator_notes: Optional[str] = None
     moderator_report: Optional[Dict[str, Any]] = None
     moderator_suggested_links: Optional[list] = None
+    review_outcome: Optional[str] = None
+    nyayguide_support_needed: Optional[bool] = None
+    nyayguide_assistance_type: Optional[str] = None
 
 @app.post("/api/interventions/resolve")
 async def resolve_intervention(payload: ResolveInterventionPayload):
@@ -1098,19 +1083,42 @@ async def resolve_intervention(payload: ResolveInterventionPayload):
     so the user sees the response immediately without relying solely on the Supabase webhook.
     """
     result = await run_in_threadpool(
-        supabase_db.resolve_intervention_case,
-        payload.case_id,
-        payload.moderator_response,
-        payload.moderator_options,
-        payload.routing_recommendation,
-        payload.moderator_id,
-        payload.moderator_summary,
-        payload.moderator_notes,
-        payload.moderator_report,
-        payload.moderator_suggested_links,
+        lambda: supabase_db.resolve_intervention_case(
+            payload.case_id,
+            payload.moderator_response,
+            payload.moderator_options,
+            payload.routing_recommendation,
+            payload.moderator_id,
+            payload.moderator_summary,
+            payload.moderator_notes,
+            payload.moderator_report,
+            payload.moderator_suggested_links,
+            review_outcome=payload.review_outcome,
+            nyayguide_support_needed=payload.nyayguide_support_needed,
+            nyayguide_assistance_type=payload.nyayguide_assistance_type,
+        )
     )
     if result and result.get("success"):
         user_id = result.get("user_id")
+        snapshot = result.get("case_snapshot") or {}
+        update_data = {
+            "type": "intervention_resolved",
+            "case_id": result.get("case_id"),
+            "session_id": result.get("session_id"),
+            "moderator_response": result.get("moderator_response"),
+            "moderator_options": result.get("moderator_options"),
+            "status": "reviewed",
+            "routing_recommendation": result.get("routing_recommendation"),
+        }
+        if snapshot:
+            update_data.update({
+                "structured_report": snapshot.get("structured_report"),
+                "ai_verification_status": snapshot.get("ai_verification_status"),
+                "nyayguide_support_needed": snapshot.get("nyayguide_support_needed"),
+                "suggested_actions": snapshot.get("suggested_actions") or [],
+                "workflow_state": snapshot.get("workflow_state"),
+                "version": snapshot.get("version"),
+            })
         if user_id:
             update_data = {
                 "type": "intervention_resolved",
@@ -1897,8 +1905,17 @@ async def chat_stream(user_query: UserQuery):
                             yield json.dumps({"type": "agent_start", "agent": name}) + "\n"
                             accumulated_answer = ""
                             prefix_stripped = False
+                            
+                            if name == "question_processor":
+                                async for line in _emit_answer_chunks("*(Formulating follow-up questions...)*\n\n", force=True):
+                                    yield line
+
                         elif name in ["report_generator", "plan_runner", "suggested_actions", "supervisor"]:
                             yield json.dumps({"type": "agent_start", "agent": name}) + "\n"
+                            
+                            if name == "report_generator":
+                                async for line in _emit_answer_chunks("*(Analyzing incident details...)*\n\n", force=True):
+                                    yield line
 
                         yield json.dumps({"type": "log", "agent": "System", "content": f"Starting {name}..."}) + "\n"
                     

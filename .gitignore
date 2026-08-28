@@ -21,9 +21,13 @@ deploy/qwen-cloudrun/.deploy-api-key.txt
 deploy/qwen-cloudrun/_smoke.json
 .cache/
 
-# Logs
+# Logs & local output
 *.log
 **/*.log
+*_log.txt
+ws_output*.txt
+test_flow_output*.txt
+.pgsql/
 
 # Service account credentials (never commit)
 *firebase-adminsdk*.json

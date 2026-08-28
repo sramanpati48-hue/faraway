@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 export type { SahayakProfile };
 
 const PAGE_SIZE = 5;
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 interface SahayakBrowserPanelProps {
   sahayaks: SahayakProfile[];

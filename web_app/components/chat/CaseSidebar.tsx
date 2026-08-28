@@ -30,7 +30,7 @@ export function CaseSidebar({ isCollapsed, onCollapse, onExpand }: CaseSidebarPr
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/sessions?uid=${user.uid}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/sessions?uid=${user.uid}`);
       if (response.ok) {
         const data = await response.json();
         const fetchedSessions = data.sessions || [];

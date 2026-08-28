@@ -55,7 +55,7 @@ export const LawyerProvider = ({ children }: { children: React.ReactNode }) => {
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<LawyerFilters>({});
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
     const normalizeLawyer = (raw: any): Lawyer => {
         const professional = raw?.professional_details || {};

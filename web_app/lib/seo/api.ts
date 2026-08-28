@@ -7,7 +7,7 @@ import type {
 } from "@/lib/seo/types";
 import { ROUTE_KEY_TO_PATH } from "@/lib/seo/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 async function fetchJson<T>(path: string, revalidate = DEFAULT_REVALIDATE): Promise<T | null> {
   try {

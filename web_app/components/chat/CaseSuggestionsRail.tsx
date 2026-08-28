@@ -2,6 +2,7 @@
 
 import { ExternalLink, Landmark, Scale, Sparkles, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NYAYGUIDE_PERMITTING_STATES } from "@/lib/chat/resolutionSnapshot";
 import type { LocalForum } from "@/lib/nyaysahayakApi";
 
 export type SuggestionAction = {
@@ -9,6 +10,12 @@ export type SuggestionAction = {
   node?: string;
   action?: string;
   payload?: string;
+  id?: string;
+  kind?: string;
+  enabled?: boolean;
+  workflow_state?: string;
+  blocked_reason?: string | null;
+  requires_user_confirmation?: boolean;
 };
 
 export type SuggestionLink = {
@@ -47,6 +54,24 @@ type Props = {
   presentation?: "rail" | "modal";
 };
 
+function isNyayguideSuggestionAction(action: SuggestionAction): boolean {
+  const kind = String(action.kind || action.action || "");
+  const id = String(action.id || "");
+  return kind === "nyayguide_suggestion" || id.startsWith("nyayguide_suggestion");
+}
+
+function isSuppressedNyayguideAction(
+  action: SuggestionAction,
+  aiVerificationStatus?: string | null
+): boolean {
+  if (!isNyayguideSuggestionAction(action)) return false;
+  if (action.enabled === false) return true;
+  const workflowState = String(action.workflow_state || "").toUpperCase();
+  if (!NYAYGUIDE_PERMITTING_STATES.has(workflowState)) return true;
+  const status = String(aiVerificationStatus || "pending").toLowerCase();
+  return status !== "verified" && status !== "verified_for_next_step";
+}
+
 function SuggestionsBody({
   actions,
   links,
@@ -72,7 +97,8 @@ function SuggestionsBody({
       a.action !== "book_nyaysahayak" &&
       a.action !== "open_scam_heatmap" &&
       a.action !== "browse_lawyers" &&
-      a.action !== "show_lawyers"
+      a.action !== "show_lawyers" &&
+      !isSuppressedNyayguideAction(a, aiVerificationStatus)
   );
 
   const verificationStatus = (aiVerificationStatus || "pending").toLowerCase();
@@ -250,13 +276,7 @@ function SuggestionsBody({
               <button
                 key={`${action.label}-${idx}`}
                 type="button"
-                onClick={() => {
-                  if (action.label === "Connect to Nyay Guide" && isPending && onOpenVoiceModerator) {
-                    onOpenVoiceModerator();
-                  } else {
-                    onAction(action);
-                  }
-                }}
+                onClick={() => onAction(action)}
                 className="rounded-xl border border-[#00634B]/20 bg-[#00634B]/5 px-3 py-2.5 text-left text-sm font-medium text-[#00634B] hover:bg-[#00634B]/10"
               >
                 {action.label}

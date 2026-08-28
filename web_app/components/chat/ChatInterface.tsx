@@ -46,6 +46,11 @@ import {
   withSessionUi,
   type CaseSessionUi,
 } from "@/lib/chat/sessionUi";
+import {
+  NYAYGUIDE_PERMITTING_STATES,
+  applyResolutionActions,
+  isNewerResolutionVersion,
+} from "@/lib/chat/resolutionSnapshot";
 import { hasSidebarCaseContent } from "@/lib/home/sessionHelpers";
 import { scamHeatmapHref, type MockScam } from "@/lib/scamsApi";
 import { cleanTextForSpeech, synthesizeWithSarvam } from "@/lib/speechProxy";
@@ -70,6 +75,16 @@ const SUGGESTED_QUESTIONS = [
   { icon: Sparkles, text: "Check my consumer rights", payload: "What are my basic consumer rights in India?" },
   { icon: CheckCircle, text: "Verify a legal document", payload: "How can I verify if a property document is authentic?" },
 ];
+
+function actionKindMatchesNyayguideSuggestion(kind: string, id: string): boolean {
+  if (kind === "nyayguide_suggestion" || kind === "connect_nyay_guide") return true;
+  return id.startsWith("nyayguide_suggestion");
+}
+
+function isCaseVerifiedForNextStep(report: any): boolean {
+  const status = String(report?.ai_verification_status || "pending").toLowerCase();
+  return status === "verified" || status === "verified_for_next_step";
+}
 
 export function ChatInterface() {
   const pathname = usePathname();
@@ -395,7 +410,7 @@ export function ChatInterface() {
       return `${wsProtocol}//${window.location.host}/ws/user/${uid}`;
     }
 
-    return `ws://localhost:8000/ws/user/${uid}`;
+    return `ws://127.0.0.1:8000/ws/user/${uid}`;
   };
 
   // Session ID
@@ -403,6 +418,7 @@ export function ChatInterface() {
   const lastScrollTime = useRef(0);
   // Stable refs for WS handler — avoids closing/reopening WS on state changes
   const interventionCaseIdRef = useRef<string | null>(null);
+  const resolutionVersionRef = useRef<Map<string, string>>(new Map());
   const localSessionIdRef = useRef<string>("");
   const wsRef = useRef<WebSocket | null>(null);
   // Track which session we've already fetched so we don't hit the API more than once per session
@@ -572,6 +588,18 @@ export function ChatInterface() {
             const matchesByCase = currentCaseId && data.case_id === currentCaseId;
             const matchesBySession = currentSessionId && data.session_id === currentSessionId;
             if (matchesByCase || matchesBySession) {
+              // Version guard: stale/duplicate resolution events must never
+              // overwrite newer local case state. Events without a version
+              // (legacy backend) are applied unguarded.
+              const eventKey = String(data.case_id || currentCaseId || currentSessionId || "");
+              const incomingVersion = data.version ? String(data.version) : null;
+              if (incomingVersion && eventKey) {
+                const storedVersion = resolutionVersionRef.current.get(eventKey) || null;
+                if (!isNewerResolutionVersion(incomingVersion, storedVersion)) {
+                  return;
+                }
+                resolutionVersionRef.current.set(eventKey, incomingVersion);
+              }
               // Break the loading lock and present the moderator's response
               setIsLoading(false);
               let nextHistory: Message[] | null = null;
@@ -622,6 +650,23 @@ export function ChatInterface() {
                     setSuggestedActions((prev) => mergeSuggestionActions(prev, cleanParsed));
                   }
                 } catch (_) { /* ignore */ }
+              }
+              // Server-authoritative snapshot: replace the in-memory case
+              // state instead of deriving eligibility from stale fields.
+              if (data.structured_report && typeof data.structured_report === "object") {
+                setStructuredReport(data.structured_report);
+              }
+              const snapshotActions = data.suggested_actions;
+              if (Array.isArray(snapshotActions)) {
+                // Fresh typed action replaces any stale nyayguide suggestion
+                // that arrived via moderator_options.
+                setSuggestedActions((prev) => applyResolutionActions(prev, snapshotActions));
+                if (snapshotActions.length > 0) {
+                  const isDesktop =
+                    typeof window !== "undefined" &&
+                    window.matchMedia("(min-width: 768px)").matches;
+                  if (isDesktop) setShowSuggestionsRail(true);
+                }
               }
               if (routingFromModerator) {
                 setRoutingRecommendation(routingFromModerator);
@@ -692,7 +737,7 @@ export function ChatInterface() {
     }
 
     try {
-      let url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/history?uid=${uid}`;
+      let url = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/history?uid=${uid}`;
       if (sessionId) {
         url += `&session_id=${sessionId}`;
       }
@@ -746,7 +791,7 @@ export function ChatInterface() {
 
   const restoreCasePdf = async (sessionId: string, uid: string) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_URL}/api/cases?uid=${encodeURIComponent(uid)}`);
       if (!res.ok) return;
 
@@ -776,7 +821,7 @@ export function ChatInterface() {
 
   const restoreForwardQueue = async (sessionId: string) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(
         `${API_URL}/api/cases/session-forward?session_id=${encodeURIComponent(sessionId)}`
       );
@@ -824,7 +869,7 @@ export function ChatInterface() {
    */
   const restoreSahayakPanel = async (sessionId: string) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_URL}/api/sahayak/session-case?session_id=${encodeURIComponent(sessionId)}`);
       if (!res.ok) return;
       const data = await res.json();
@@ -1191,7 +1236,7 @@ export function ChatInterface() {
             pdf_url: data.pdf_url || null,
             generate_pdf: false
           };
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/cases/complete`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/cases/complete`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(completePayload)
@@ -1260,7 +1305,7 @@ export function ChatInterface() {
                 structured_report: data.structured_report,
                 session_data: prev
               };
-              fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/cases`, {
+              fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/cases`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -1412,7 +1457,7 @@ export function ChatInterface() {
     const lawyerUid = lawyer.user_id || (lawyer as any).id;
     if (!lawyerCaseId || !lawyerUid) return;
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/lawyer/cases/${lawyerCaseId}/accept`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/lawyer/cases/${lawyerCaseId}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lawyer_id: lawyerUid })
@@ -1480,6 +1525,10 @@ export function ChatInterface() {
       trimmed === "request a nyay guide" ||
       trimmed === "request on-ground help"
     ) {
+      if (nyayGuideSuppressed) {
+        setQuery("");
+        return;
+      }
       setShowNyayGuideCard(true);
       setShowSuggestionsRail(false);
       setQuery("");
@@ -1516,7 +1565,7 @@ export function ChatInterface() {
       });
       updateHistoryCache(sessionId, nextMessages);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         const res = await fetch(`${API_URL}/api/cases/follow-up`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1624,7 +1673,7 @@ export function ChatInterface() {
           ? attachments
           : await filesToChatAttachments(composerFiles);
       setComposerFiles([]);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/chat/stream`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1681,7 +1730,7 @@ export function ChatInterface() {
 
     // Fast pre-population: fetch matched lawyers immediately from /api/lawyers so panel is never empty
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/lawyers`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/lawyers`);
       if (res.ok) {
         const data = await res.json();
         const all = data.lawyers || [];
@@ -1715,20 +1764,52 @@ export function ChatInterface() {
     void handleSubmit(undefined, prompt);
   };
 
+  const reportWorkflowState = String(structuredReport?.workflow_state || "").toUpperCase();
+  const emergencyEscalationActive =
+    Boolean(structuredReport?.emergency_escalation_active) ||
+    reportWorkflowState === "EMERGENCY_ESCALATION";
+  const humanReviewActive =
+    String(structuredReport?.ai_verification_status || "pending").toLowerCase() === "flagged" ||
+    Boolean(structuredReport?.manual_review_required) ||
+    Boolean(structuredReport?.human_takeover_required) ||
+    reportWorkflowState === "HIGH_RISK_HUMAN_REVIEW";
+  const nyayGuideSuppressed =
+    emergencyEscalationActive || humanReviewActive || !isCaseVerifiedForNextStep(structuredReport);
+
+  const caseSuggestionsRailProps = {
+    open: showSuggestionsRail,
+    actions: suggestedActions,
+    links: suggestedLinks,
+    lawyerNeeded,
+    lawyerCategory,
+    lawyerNeedReason,
+    localForum,
+    scamMatches: matchedScamTrends,
+    scamSimilarityNote,
+    isAdmin: role?.toLowerCase() === "admin" || (user as any)?.role?.toLowerCase() === "admin",
+    aiVerificationStatus: structuredReport?.ai_verification_status || "pending",
+    aiVerificationReason: structuredReport?.ai_verification_reason,
+    onClose: () => setShowSuggestionsRail(false),
+    onOpenLawyers: () => {
+      openLawyerBrowser({ category: lawyerCategory });
+    },
+  };
   const handleAction = (action: any) => {
-    const kind = String(action?.action || action?.payload || "");
+    const kind = String(action?.kind || action?.action || action?.payload || "");
+    const actionId = String(action?.id || "");
     if (
-      kind === "open_voice_moderator" ||
-      kind === "talk_to_moderator" ||
-      kind === "voice_moderator" ||
-      kind === "connect_nyay_guide" ||
-      action?.label === "Connect to Nyay Guide" ||
-      action?.label === "Clarify with Voice Moderator" ||
-      action?.label === "Talk to Voice Moderator" ||
-      action?.label === "Talk to AI Moderator"
+      (actionKindMatchesNyayguideSuggestion(kind, actionId)) &&
+      action?.enabled !== false &&
+      NYAYGUIDE_PERMITTING_STATES.has(String(action?.workflow_state || "").toUpperCase())
     ) {
       setManualVoiceModeratorTrigger(true);
       setShowSuggestionsRail(false);
+      return;
+    }
+    if (
+      (actionKindMatchesNyayguideSuggestion(kind, actionId)) ||
+      nyayGuideSuppressed
+    ) {
       return;
     }
     if (kind === "browse_lawyers" || kind === "show_lawyers") {
@@ -1983,7 +2064,7 @@ export function ChatInterface() {
 
   const syncHistoryToBackend = async (uid: string, history: Message[], sessionId: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/chat/history`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/history`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2483,20 +2564,8 @@ export function ChatInterface() {
                 </button>
               )}
               <CaseSuggestionsRail
-                open={showSuggestionsRail}
+                {...caseSuggestionsRailProps}
                 presentation="modal"
-                actions={suggestedActions}
-                links={suggestedLinks}
-                lawyerNeeded={lawyerNeeded}
-                lawyerCategory={lawyerCategory}
-                lawyerNeedReason={lawyerNeedReason}
-                localForum={localForum}
-                scamMatches={matchedScamTrends}
-                scamSimilarityNote={scamSimilarityNote}
-                isAdmin={role?.toLowerCase() === "admin" || (user as any)?.role?.toLowerCase() === "admin"}
-                aiVerificationStatus={structuredReport?.ai_verification_status || (currentCasePending ? "pending" : "pending")}
-                aiVerificationReason={structuredReport?.ai_verification_reason}
-                onClose={() => setShowSuggestionsRail(false)}
                 onOpenVoiceModerator={() => {
                   setShowSuggestionsRail(false);
                   setManualVoiceModeratorTrigger(true);
@@ -2505,30 +2574,12 @@ export function ChatInterface() {
                   setShowSuggestionsRail(false);
                   handleAction(action);
                 }}
-                onOpenLawyers={() => {
-                  openLawyerBrowser({ category: lawyerCategory });
-                }}
               />
               <CaseSuggestionsRail
-                open={showSuggestionsRail}
+                {...caseSuggestionsRailProps}
                 presentation="rail"
-                actions={suggestedActions}
-                links={suggestedLinks}
-                lawyerNeeded={lawyerNeeded}
-                lawyerCategory={lawyerCategory}
-                lawyerNeedReason={lawyerNeedReason}
-                localForum={localForum}
-                scamMatches={matchedScamTrends}
-                scamSimilarityNote={scamSimilarityNote}
-                isAdmin={role?.toLowerCase() === "admin" || (user as any)?.role?.toLowerCase() === "admin"}
-                aiVerificationStatus={structuredReport?.ai_verification_status || (currentCasePending ? "pending" : "pending")}
-                aiVerificationReason={structuredReport?.ai_verification_reason}
-                onClose={() => setShowSuggestionsRail(false)}
                 onOpenVoiceModerator={() => setManualVoiceModeratorTrigger(true)}
                 onAction={(action) => handleAction(action)}
-                onOpenLawyers={() => {
-                  openLawyerBrowser({ category: lawyerCategory });
-                }}
               />
             </>
           );

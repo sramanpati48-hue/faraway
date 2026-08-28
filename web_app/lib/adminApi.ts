@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 const ACCESS_KEY = "nyaya_access_token";
 const REFRESH_KEY = "nyaya_refresh_token";
 const USER_KEY = "nyaya_user";

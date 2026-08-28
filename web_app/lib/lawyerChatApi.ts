@@ -1,7 +1,7 @@
 import type { LawyerMessage, LawyerProfile, LawyerThread } from "./lawyerTypes";
 import { normalizeLawyerProfile } from "./lawyerTypes";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 function authHeaders(token?: string | null): HeadersInit {
   const headers: HeadersInit = { "Content-Type": "application/json" };

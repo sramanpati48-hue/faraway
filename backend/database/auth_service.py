@@ -363,18 +363,4 @@ def reset_password_with_code(identifier: str, reset_code: str, new_password: str
     return _issue_tokens(user)
 
 
-def import_firebase_user(firebase_uid: str, email: Optional[str], role: str = "victim") -> dict[str, Any]:
-    """Import a Firebase profile as password_reset_required local user."""
-    existing = execute_one("SELECT * FROM users WHERE firebase_uid = %s LIMIT 1", (firebase_uid,))
-    if existing:
-        return _public_user(existing)
-    email_n = normalize_email(email)
-    rows = execute(
-        """
-        INSERT INTO users (firebase_uid, email, role, status, password_reset_required)
-        VALUES (%s, %s, %s, 'pending_reset', true)
-        RETURNING *
-        """,
-        (firebase_uid, email_n, (role or "victim").lower()),
-    )
-    return _public_user(rows[0])
+

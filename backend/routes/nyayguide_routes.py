@@ -3,6 +3,8 @@ Authenticated API routes for NyayGuide Physical Assistance Dispatch System.
 """
 from __future__ import annotations
 
+import json
+import logging
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -12,6 +14,7 @@ from backend.database.auth_middleware import get_current_user
 from backend.database.postgres_pool import execute, execute_one, execute_void
 from backend.database.supabase_case_enhance import get_case_complete
 from backend.database import supabase_db
+from backend.services.nyayguide_eligibility import evaluate_nyayguide_eligibility
 from backend.services.nyayguide_service import (
     accept_offer_transactional,
     cancel_request_by_citizen,
@@ -27,9 +30,34 @@ from backend.services.nyayguide_service import (
 
 router = APIRouter(prefix="/api/nyayguide", tags=["NyayGuide Dispatch"])
 
+logger = logging.getLogger(__name__)
+
 
 def _uid(user: dict) -> str:
     return str(user.get("id") or user.get("uid") or "").strip()
+
+
+def _audit_nyayguide_block(user_id: str, case_id: str, reason_code: str) -> None:
+    """Best-effort audit trail for blocked NyayGuide request attempts."""
+    try:
+        execute_void(
+            """
+            INSERT INTO auth_audit_events (user_id, event_type, detail)
+            VALUES (%s, %s, %s::jsonb)
+            """,
+            (
+                user_id,
+                "nyayguide_request_blocked",
+                json.dumps({"case_id": case_id, "reason_code": reason_code}),
+            ),
+        )
+    except Exception:
+        logger.exception(
+            "nyayguide audit write failed (block still enforced): user=%s case=%s reason=%s",
+            user_id,
+            case_id,
+            reason_code,
+        )
 
 
 class CreateNyayGuideRequestBody(BaseModel):
@@ -102,6 +130,17 @@ async def create_nyayguide_request(
     case_owner = str(case_row.get("user_id") or "").strip()
     if case_owner and case_owner != user_id:
         raise HTTPException(status_code=403, detail="Unauthorized access to this case")
+
+    eligibility = evaluate_nyayguide_eligibility(case_row)
+    if not eligibility.get("allowed"):
+        _audit_nyayguide_block(user_id, body.case_id, str(eligibility.get("code")))
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": eligibility.get("code"),
+                "message": eligibility.get("message"),
+            },
+        )
 
     report = case_row.get("structured_report") or {}
 

@@ -17,7 +17,6 @@ groq
 python-multipart
 langchain-google-genai
 geopy
-firebase-admin
 certifi
 reportlab
 Pillow
