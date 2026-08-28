@@ -819,6 +819,29 @@ function VoiceModeratorInner({
                 ? "Voice Moderator is responding..."
                 : "Press & hold the microphone button to speak"}
             </p>
+
+            
+            {/* Action buttons */}
+            <div className="w-full flex items-center justify-center gap-4 pt-2">
+              <button
+                type="button"
+                onClick={() => setSpeechNotice("Please try speaking into the microphone again.")}
+                className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-[#00634B] transition-colors"
+              >
+                <RefreshCw className="size-3" />
+                Retry Microphone
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setSpeechNotice("Connecting you to assisted digital support...")}
+                className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-[#00634B] transition-colors"
+              >
+                <MessageSquare className="size-3" />
+                Assisted Support Options
+              </button>
+            </div>
+    
           </div>
         </div>
       )}

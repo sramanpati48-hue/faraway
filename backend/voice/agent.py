@@ -93,6 +93,22 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 # ── Validated Voice Agent Action Contract ─────────────────────────────────────
+
+class WorkflowState(str, Enum):
+    VERIFYING = "verifying"
+    NEEDS_CLARIFICATION = "needs_clarification"
+    VERIFIED_FOR_NEXT_STEP = "verified_for_next_step"
+    HIGH_RISK_HUMAN_REVIEW = "high_risk_human_review"
+    UNABLE_TO_VERIFY = "unable_to_verify"
+    EMERGENCY_ESCALATION = "emergency_escalation"
+    ASSESS_SUPPORT_NEED = "assess_support_need"
+    NYAYGUIDE_SUGGESTED = "nyayguide_suggested"
+    AWAITING_NYAYGUIDE_CONFIRMATION = "awaiting_nyayguide_confirmation"
+    CALL_CENTRE_SCREENING = "call_centre_screening"
+    SEARCHING = "searching"
+    MATCHED = "matched"
+    CANCELLED = "cancelled"
+
 class ActionType(str, Enum):
     NONE = "none"
     ASK_CLARIFICATION = "ask_clarification"
@@ -299,7 +315,9 @@ class ConversationState:
 
     # Scoring and resolution
     confidence_score: float = 0.5
-    resolution_status: str = "in_progress"  # 'in_progress', 'verified', 'escalate', 'completed'
+    resolution_status: str = "in_progress"
+    workflow_state: WorkflowState = WorkflowState.VERIFYING
+    frontend_audio_state: str = "idle"  # 'in_progress', 'verified', 'escalate', 'completed'
     failed_resolve_count: int = 0
 
     # Escalation
@@ -356,20 +374,16 @@ class ConversationState:
 
 # ── Sub-agents ────────────────────────────────────────────────────────────────
 
+
 class VerificationAgent:
     """
-    Silently cross-checks live narrative against the original case intake record.
-    Updates confidence_score and extracted facts in the background.
-    Does NOT interrogate the user about facts already recorded in the case.
+    Adaptive voice verification that assesses facts based on missing details, safety, case type,
+    and routing need, instead of a rigid script. Does not label cases as 'fake' or 'genuine'.
     """
     def __init__(self, state: ConversationState) -> None:
         self.state = state
 
     async def evaluate_and_respond(self, user_text: str) -> Tuple[str, float]:
-        """
-        Clarifies missing specifics (dates, financial loss, counterparty) without
-        repeating past questions.  Returns (spoken_response, updated_confidence_score).
-        """
         ctx = self.state.context_building or {}
         prior_facts = json.dumps({
             "incident_type": ctx.get("incident_type"),
@@ -380,22 +394,54 @@ class VerificationAgent:
         }, default=str)
 
         prompt = (
-            f"You are the NyaySahayak Verification Voice Moderator.\n"
-            f"The user is speaking with you to clarify details about their legal situation.\n\n"
-            f"CRITICAL INSTRUCTIONS:\n"
-            f"1. NEVER ask the user to repeat what they have already stated in the prior context.\n"
-            f"2. Ground your questions on what is already known:\n"
-            f"   PRIOR CONTEXT: {prior_facts}\n"
-            f"3. If the user provided new details, acknowledge them concisely and verify missing critical items.\n"
-            f"4. Keep spoken responses short, natural, warm, and clear (1-3 sentences maximum).\n\n"
-            f"User just said: \"{user_text}\"\n"
-            f"Voice conversation history: {json.dumps(self.state.transcript[-4:], default=str)}\n\n"
-            f"Respond with JSON:\n"
-            f"{{\n"
-            f'  "spoken_response": "your short spoken message to user",\n'
-            f'  "extracted_facts": {{"key": "value"}},\n'
-            f'  "confidence_boost": 0.15,\n'
-            f'  "verification_complete": false\n'
+            f"You are the NyaySahayak Adaptive Voice Verification Layer.
+"
+            f"Your role is to assess workflow readiness, completeness, consistency, safety, and routing suitability.
+"
+            f"DO NOT claim a case is genuine, fake, proven, credible, or legally valid.
+"
+            f"
+"
+            f"CRITICAL INSTRUCTIONS:
+"
+            f"1. ADAPTIVE CHECKLIST: Base your questions on what is missing from the known facts, considering safety, case type, routing need, and consistency.
+"
+            f"2. NEVER ask the user to repeat what they have already stated in the prior context.
+"
+            f"3. Do not follow a rigid script.
+"
+            f"4. If there are inconsistencies, gently ask for clarification.
+"
+            f"5. If there is immediate safety concern, trigger EMERGENCY_ESCALATION.
+"
+            f"6. If the case requires human legal review (e.g. trauma, complex corporate), trigger HIGH_RISK_HUMAN_REVIEW.
+"
+            f"7. If you cannot verify facts despite clarification, trigger UNABLE_TO_VERIFY.
+"
+            f"8. If information is consistent and sufficiently complete for next steps, trigger VERIFIED_FOR_NEXT_STEP.
+"
+            f"
+"
+            f"PRIOR CONTEXT: {prior_facts}
+"
+            f"User just said: \"{user_text}\"
+"
+            f"Voice conversation history: {json.dumps(self.state.transcript[-4:], default=str)}
+"
+            f"
+"
+            f"Respond with JSON:
+"
+            f"{{
+"
+            f'  "spoken_response": "your short spoken message to user",
+'
+            f'  "extracted_facts": {{"key": "value"}},
+'
+            f'  "workflow_state": "verifying" | "needs_clarification" | "verified_for_next_step" | "high_risk_human_review" | "unable_to_verify" | "emergency_escalation",
+'
+            f'  "confidence_boost": 0.15
+'
             f"}}"
         )
         try:
@@ -403,35 +449,32 @@ class VerificationAgent:
             content = resp.content if isinstance(resp.content, str) else str(resp.content)
             clean = content.strip().replace("```json", "").replace("```", "").strip()
             data = json.loads(clean)
-            spoken = data.get(
-                "spoken_response",
-                "Thank you for explaining that. I have noted those details.",
-            )
+            
+            spoken = data.get("spoken_response", "Thank you for explaining that. Let's continue.")
             if data.get("extracted_facts"):
                 self.state.verified_facts.update(data["extracted_facts"])
+                
             boost = float(data.get("confidence_boost", 0.1))
             new_score = round(min(1.0, self.state.confidence_score + boost), 2)
-            if data.get("verification_complete") or new_score >= 0.85:
-                self.state.resolution_status = "verified"
-                self.state.log_decision(
-                    "VerificationAgent",
-                    "verification_complete",
-                    f"Confidence reached {new_score}; verification_complete flag={data.get('verification_complete')}.",
-                )
+            
+            next_state_str = str(data.get("workflow_state", "verifying")).upper()
+            if hasattr(WorkflowState, next_state_str):
+                self.state.workflow_state = WorkflowState[next_state_str]
             else:
-                self.state.log_decision(
-                    "VerificationAgent",
-                    "verification_in_progress",
-                    f"Confidence score updated to {new_score}; continuing clarification.",
-                )
+                self.state.workflow_state = WorkflowState.VERIFYING
+                
+            if self.state.workflow_state == WorkflowState.VERIFIED_FOR_NEXT_STEP:
+                self.state.workflow_state = WorkflowState.ASSESS_SUPPORT_NEED
+                
+            self.state.log_decision(
+                "VerificationAgent",
+                self.state.workflow_state.value,
+                f"Confidence {new_score}; State transitioned to {self.state.workflow_state.value}",
+            )
             return spoken, new_score
         except Exception as exc:
             print(f"VerificationAgent error: {exc}")
-            self.state.log_decision(
-                "VerificationAgent",
-                "error_fallback",
-                f"LLM call failed — {exc}.",
-            )
+            self.state.log_decision("VerificationAgent", "error_fallback", f"LLM call failed — {exc}.")
             return (
                 "Thank you for sharing that. I am updating your case record with these details.",
                 min(1.0, self.state.confidence_score + 0.1),
@@ -681,202 +724,96 @@ class VoiceModeratorAgentWorker:
 
     # ── Turn processing ───────────────────────────────────────────────────────
 
+
     async def process_user_turn(self, user_text: str) -> Dict[str, Any]:
         """
         Executes one reasoning turn across cooperating sub-agents with validated action contract.
-
-        Turn order:
-          1. Increment turn count & append utterance
-          2. Evaluate deterministic action intent (detect_voice_action_intent)
-          3. If action is REQUEST_NYAYGUIDE:
-             - Formulate SupportAgent confirmation response
-             - Return structured action with requires_confirmation=True (never auto-dispatch!)
-          4. If action is HUMAN_REVIEW and emergency:
-             - Formulate emergency EscalationAgent response
-          5. If first turn (and no special intent):
-             - Return context-aware greeting
-          6. Sub-agent reasoning:
-             - VerificationAgent: updates confidence and facts
-             - Check escalation triggers (sensitive flag, low confidence, repeated unresolved)
-             - SupportAgent: formulate response with legal context
+        Uses WorkflowState for routing.
         """
-        # 1. Increment turn count at the very start of each genuine user turn
         self.state.turn_count += 1
         self.state.add_utterance("user", user_text)
 
-        # 2. Check deterministic action intent first (Physical Assistance / Emergency / Human Review)
         action_contract = detect_voice_action_intent(
             user_text,
             context=self.state.context_building or {},
             risk_flags=self.state.risk_flags,
         )
 
-        # 3. Handle explicit Physical Assistance / NyayGuide intent
-        if action_contract.action == ActionType.REQUEST_NYAYGUIDE:
-            self.state.active_agent = "SupportAgent"
-            is_sensitive = "sensitive" in self.state.risk_flags
-            spoken = (
-                "I understand that you want practical, on-ground assistance. "
-                "I can prepare a NyayGuide request for help with the complaint process. "
-                "Please review and confirm the request before we search for a nearby NyayGuide."
-            )
-            if is_sensitive and self.state.turn_count <= 2:
-                if _SENSITIVE_REQUIRED_SENTENCE not in spoken:
-                    spoken = f"{_SENSITIVE_REQUIRED_SENTENCE} {spoken}"
-
-            self.state.add_utterance("assistant", spoken, "SupportAgent")
-            self.state.log_decision(
-                "SupportAgent",
-                "nyayguide_intent_detected",
-                "User explicitly requested physical assistance; prepared confirmation action.",
-            )
-            self._last_was_support_resolution = False
-            self._persist_current_state()
-
-            return {
-                "status": "success",
-                "spoken_response": spoken,
-                "text": spoken,
-                "action": action_contract.action.value,
-                "requires_confirmation": True,
-                "assistance_type": action_contract.assistance_type.value if action_contract.assistance_type else "complaint_filing_support",
-                "safe_task_summary": action_contract.safe_task_summary,
-                "escalation_reason": action_contract.escalation_reason,
-                "resolution_status": self.state.resolution_status,
-                "active_agent": "SupportAgent",
-                "confidence_score": self.state.confidence_score,
-                "voice_profile": self.state.get_voice_profile(),
-                "state": self.state.to_dict(),
-            }
-
-        # 4. Handle Emergency Intent
         if action_contract.action == ActionType.HUMAN_REVIEW and not action_contract.requires_confirmation:
             self.state.active_agent = "EscalationAgent"
-            spoken = action_contract.message or "Your safety is our top priority. If you are in immediate danger, please contact local emergency services immediately (Dial 112 in India)."
+            self.state.workflow_state = WorkflowState.EMERGENCY_ESCALATION
+            spoken = action_contract.message or "Your safety is our top priority. If you are in immediate danger, please contact local emergency services immediately."
             self.state.add_utterance("assistant", spoken, "EscalationAgent")
-            self.state.log_decision(
-                "EscalationAgent",
-                "emergency_escalation",
-                action_contract.escalation_reason or "Emergency condition triggered.",
-            )
-            self._last_was_support_resolution = False
             self._persist_current_state()
-            return {
-                "status": "success",
-                "spoken_response": spoken,
-                "text": spoken,
-                "action": ActionType.HUMAN_REVIEW.value,
-                "requires_confirmation": False,
-                "assistance_type": None,
-                "safe_task_summary": None,
-                "escalation_reason": action_contract.escalation_reason,
-                "resolution_status": "escalate",
-                "active_agent": "EscalationAgent",
-                "confidence_score": self.state.confidence_score,
-                "voice_profile": self.state.get_voice_profile(),
-                "state": self.state.to_dict(),
-            }
+            return self._build_turn_response(spoken, action_contract)
 
-        # 5. First turn: return personalized greeting; skip sub-agent pipeline if general conversation
-        if self.state.turn_count == 1:
+        if action_contract.action == ActionType.REQUEST_NYAYGUIDE:
+            if self.state.workflow_state in (WorkflowState.VERIFYING, WorkflowState.NEEDS_CLARIFICATION):
+                spoken = "I understand you want on-ground assistance. I'm still verifying the details so I can guide you safely. I'll ask a few short questions first."
+                self.state.add_utterance("assistant", spoken, "VerificationAgent")
+                
+                # Still ask verification question
+                ver_spoken, _ = await self.verification_agent.evaluate_and_respond(user_text)
+                final_spoken = f"{spoken} {ver_spoken}"
+                self._persist_current_state()
+                return self._build_turn_response(final_spoken, VoiceAgentAction(action=ActionType.NONE))
+            else:
+                self.state.workflow_state = WorkflowState.NYAYGUIDE_SUGGESTED
+                spoken = (
+                    "I can prepare a NyayGuide request for help with the process. "
+                    "Please review and confirm the request before we search for a nearby NyayGuide."
+                )
+                self.state.add_utterance("assistant", spoken, "SupportAgent")
+                self.state.workflow_state = WorkflowState.AWAITING_NYAYGUIDE_CONFIRMATION
+                self._persist_current_state()
+                return self._build_turn_response(spoken, action_contract)
+                
+        if self.state.turn_count == 1 and not user_text.strip():
             greeting = self._build_first_turn_greeting()
             self.state.active_agent = "VoiceModerator"
             self.state.add_utterance("assistant", greeting, "VoiceModerator")
-            self.state.log_decision(
-                "VoiceModerator",
-                "first_turn_greeting",
-                "Acknowledged known case context on first user turn without asking user to restate facts.",
-            )
             self._persist_current_state()
-            return {
-                "status": "success",
-                "spoken_response": greeting,
-                "text": greeting,
-                "action": ActionType.NONE.value,
-                "requires_confirmation": False,
-                "assistance_type": None,
-                "safe_task_summary": None,
-                "escalation_reason": None,
-                "resolution_status": self.state.resolution_status,
-                "active_agent": "VoiceModerator",
-                "confidence_score": self.state.confidence_score,
-                "voice_profile": self.state.get_voice_profile(),
-                "state": self.state.to_dict(),
-            }
+            return self._build_turn_response(greeting, VoiceAgentAction(action=ActionType.NONE))
 
-        # 6. Maintain failed-resolution counter based on current user input
-        self._evaluate_resolution_state(user_text)
-
-        # is_agent_speaking is a REST-compatibility flag for turn-based barge-in awareness.
-        self.state.is_agent_speaking = True
-        try:
-            # 7. VerificationAgent: silent background pass — updates confidence/facts
+        # Main Verification Loop
+        if self.state.workflow_state in (WorkflowState.VERIFYING, WorkflowState.NEEDS_CLARIFICATION, WorkflowState.ASSESS_SUPPORT_NEED):
             self.state.active_agent = "VerificationAgent"
-            _verify_msg, new_score = await self.verification_agent.evaluate_and_respond(user_text)
-            self.state.confidence_score = new_score
-            self.state.confidence_score_history.append({
-                "score": new_score,
-                "turn": self.state.turn_count,
-                "timestamp": time.time(),
-            })
-
-            # 8. EscalationAgent: check all 4 conditions using updated confidence
-            should_escalate, escalation_reason = self.escalation_agent.check_escalation_triggers(
-                user_text
-            )
-            if should_escalate:
-                self.state.active_agent = "EscalationAgent"
-                self.state.escalation_reason = escalation_reason
-                packet = await self.escalation_agent.build_handoff_packet(escalation_reason)
-                spoken = (
-                    "I have flagged your case for our specialized human moderator review team so you receive direct support. "
-                    "Everything we discussed has been securely preserved."
-                )
-                self.state.add_utterance("assistant", spoken, "EscalationAgent")
-                self._last_was_support_resolution = False
-                self._persist_current_state()
-                return {
-                    "status": "success",
-                    "spoken_response": spoken,
-                    "text": spoken,
-                    "action": ActionType.HUMAN_REVIEW.value,
-                    "requires_confirmation": True if "human" in str(escalation_reason).lower() else False,
-                    "assistance_type": None,
-                    "safe_task_summary": None,
-                    "escalation_reason": escalation_reason,
-                    "resolution_status": "escalate",
-                    "active_agent": "EscalationAgent",
-                    "confidence_score": self.state.confidence_score,
-                    "voice_profile": self.state.get_voice_profile(),
-                    "handoff_packet": packet,
-                    "state": self.state.to_dict(),
-                }
-
-            # 9. SupportAgent: respond with legal context
-            self.state.active_agent = "SupportAgent"
-            support_msg = await self.support_agent.evaluate_and_respond(user_text)
-            self._last_was_support_resolution = True
-            self.state.add_utterance("assistant", support_msg, "SupportAgent")
+            spoken, score = await self.verification_agent.evaluate_and_respond(user_text)
+            self.state.add_utterance("assistant", spoken, "VerificationAgent")
             self._persist_current_state()
-            return {
-                "status": "success",
-                "spoken_response": support_msg,
-                "text": support_msg,
-                "action": ActionType.NONE.value,
-                "requires_confirmation": False,
-                "assistance_type": None,
-                "safe_task_summary": None,
-                "escalation_reason": None,
-                "resolution_status": self.state.resolution_status,
-                "active_agent": "SupportAgent",
-                "confidence_score": self.state.confidence_score,
-                "voice_profile": self.state.get_voice_profile(),
-                "state": self.state.to_dict(),
-            }
+            return self._build_turn_response(spoken, VoiceAgentAction(action=ActionType.NONE))
 
-        finally:
-            # Always reset the barge-in flag — regardless of success or error
-            self.state.is_agent_speaking = False
+        # Support phase
+        self.state.active_agent = "SupportAgent"
+        spoken = await self.support_agent.evaluate_and_respond(user_text)
+        self.state.add_utterance("assistant", spoken, "SupportAgent")
+        
+        should_esc, reason = self.escalation_agent.check_escalation_triggers(user_text)
+        if should_esc:
+            packet = await self.escalation_agent.build_handoff_packet(reason)
+            await self.escalation_agent.execute_nyayguide_handoff(packet)
+
+        self._persist_current_state()
+        return self._build_turn_response(spoken, VoiceAgentAction(action=ActionType.NONE))
+
+    def _build_turn_response(self, spoken: str, action: VoiceAgentAction) -> Dict[str, Any]:
+        return {
+            "status": "success",
+            "spoken_response": spoken,
+            "text": spoken,
+            "action": action.action.value,
+            "requires_confirmation": action.requires_confirmation,
+            "assistance_type": action.assistance_type.value if action.assistance_type else None,
+            "safe_task_summary": action.safe_task_summary,
+            "escalation_reason": action.escalation_reason,
+            "resolution_status": self.state.resolution_status,
+            "workflow_state": self.state.workflow_state.value,
+            "frontend_audio_state": "idle",
+            "active_agent": self.state.active_agent,
+            "confidence_score": self.state.confidence_score,
+            "voice_profile": self.state.get_voice_profile(),
+            "state": self.state.to_dict(),
+        }
 
     async def process_audio_turn(
         self,
