@@ -349,7 +349,7 @@ export function CaseHomeLanding({ onStartChat, disabled }: CaseHomeLandingProps)
         </div>
       </motion.div>
 
-      <div className="my-8 grid gap-3 sm:grid-cols-2">
+      <div className="my-8 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         <ShortcutCard
           href="/find-help"
           icon={Users}
@@ -364,6 +364,23 @@ export function CaseHomeLanding({ onStartChat, disabled }: CaseHomeLandingProps)
           delay={0.2}
           iconClassName="text-slate-600"
         />
+        {/* Added specifically for testing AI Voice Verificator without needing a case */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            if (onStartChat) onStartChat("talk to ai moderator");
+          }}
+          className="group relative flex h-14 items-center justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition-all hover:border-[#00634B]/30 hover:bg-[#00634B]/5 hover:shadow-md dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-950/20"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 transition-colors group-hover:bg-white dark:bg-slate-900 dark:group-hover:bg-slate-950">
+              <Users className="h-4 w-4 text-[#00634B]" />
+            </span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Demo AI Verificator
+            </span>
+          </div>
+        </button>
       </div>
 
       <motion.section

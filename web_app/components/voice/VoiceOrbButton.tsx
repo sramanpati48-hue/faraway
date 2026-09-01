@@ -66,7 +66,7 @@ export function VoiceOrbButton({
 
   return (
     <div 
-      className="relative flex justify-center items-center h-48 w-48 cursor-pointer touch-none"
+      className="relative flex justify-center items-center h-64 w-64 cursor-pointer touch-none"
       onMouseDown={onPressStart}
       onMouseUp={onPressEnd}
       onTouchStart={onPressStart}

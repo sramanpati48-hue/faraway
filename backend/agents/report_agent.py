@@ -1092,7 +1092,7 @@ def report_generator_agent(state):
             except Exception as verify_persist_err:
                 print(f"   ⚠️ update_case_ai_verification_status skipped: {verify_persist_err}")
 
-        if not is_sexual_offense and ai_verification_status == "verified":
+        if not is_sexual_offense:
             structured_report["nyayguide_support_needed"] = True
             nyayguide_suggestion = build_nyayguide_suggestion(
                 structured_report,

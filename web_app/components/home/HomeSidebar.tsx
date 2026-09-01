@@ -9,6 +9,7 @@ import {
   BookOpen,
   Briefcase,
   ChevronDown,
+  Compass,
   GraduationCap,
   Home,
   Map,
@@ -416,6 +417,13 @@ export function HomeSidebar({
         href: "/admin",
         icon: Shield,
         match: (p: string) => p.startsWith("/admin"),
+      },
+      {
+        id: "nyayguide",
+        label: "Nyayguide console",
+        href: "/nyayguide-console",
+        icon: Map,
+        match: (p: string) => p.startsWith("/nyayguide-console"),
       },
     ];
   }, [isAdmin]);
