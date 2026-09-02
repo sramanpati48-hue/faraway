@@ -1,0 +1,80 @@
+class VoiceModeratorAgentWorker:
+    """
+    Unified AI Voice Moderator coordinating VerificationAgent, SupportAgent, and
+    EscalationAgent over a shared ConversationState.
+    """
+    def __init__(self, state: ConversationState) -> None:
+        self.state = state
+        self.verification_agent = VerificationAgent(state)
+        self.support_agent = SupportAgent(state)
+        self.escalation_agent = EscalationAgent(state)
+        # Internal flag: tracks whether SupportAgent completed a resolution attempt
+        # on the immediately preceding turn (used for failed_resolve_count logic).
+        self._last_was_support_resolution: bool = False
+
+    # ── Turn processing ───────────────────────────────────────────────────────
+
+    async def process_user_turn(self, user_text: str) -> Dict[str, Any]:
+        """
+        Executes one reasoning turn across cooperating sub-agents with validated action contract.
+
+        Turn order:
+          1. Increment turn count & append utterance
+          2. Evaluate deterministic action intent (detect_voice_action_intent)
+          3. If action is REQUEST_NYAYGUIDE:
+             - Formulate SupportAgent confirmation response
+             - Return structured action with requires_confirmation=True (never auto-dispatch!)
+          4. If action is HUMAN_REVIEW and emergency:
+             - Formulate emergency EscalationAgent response
+          5. If first turn (and no special intent):
+             - Return context-aware greeting
+          6. Sub-agent reasoning:
+             - VerificationAgent: updates confidence and facts
+             - Check escalation triggers (sensitive flag, low confidence, repeated unresolved)
+             - SupportAgent: formulate response with legal context
+        """
+        # 1. Increment turn count at the very start of each genuine user turn
+        self.state.turn_count += 1
+        self.state.add_utterance("user", user_text)
+
+        # 2. Check deterministic action intent first (Physical Assistance / Emergency / Human Review)
+        action_contract = detect_voice_action_intent(
+            user_text,
+            context=self.state.context_building or {},
+            risk_flags=self.state.risk_flags,
+        )
+
+        # 3. Handle explicit Physical Assistance / NyayGuide intent
+        if action_contract.action == ActionType.REQUEST_NYAYGUIDE:
+            self.state.active_agent = "SupportAgent"
+            is_sensitive = "sensitive" in self.state.risk_flags
+            spoken = (
+                "I understand that you want practical, on-ground assistance. "
+                "I can prepare a NyayGuide request for help with the complaint process. "
+                "Please review and confirm the request before we search for a nearby NyayGuide."
+            )
+            if is_sensitive and self.state.turn_count <= 2:
+                if _SENSITIVE_REQUIRED_SENTENCE not in spoken:
+                    spoken = f"{_SENSITIVE_REQUIRED_SENTENCE} {spoken}"
+
+            self.state.add_utterance("assistant", spoken, "SupportAgent")
+            self.state.log_decision(
+                "SupportAgent",
+                "nyayguide_intent_detected",
+                "User explicitly requested physical assistance; prepared confirmation action.",
+            )
+            self._last_was_support_resolution = False
+            self._persist_current_state()
+
+            return {
+                "status": "success",
+                "spoken_response": spoken,
+                "text": spoken,
+                "action": action_contract.action.value,
+                "requires_confirmation": True,
+                "assistance_type": action_contract.assistance_type.value if action_contract.assistance_type else "complaint_filing_support",
+                "safe_task_summary": action_contract.safe_task_summary,
+                "escalation_reason": action_contract.escalation_reason,
+                "resolution_status": self.state.resolution_status,
+                "active_agent": "SupportAgent",
+      
