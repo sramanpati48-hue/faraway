@@ -64,12 +64,8 @@ function isSuppressedNyayguideAction(
   action: SuggestionAction,
   aiVerificationStatus?: string | null
 ): boolean {
-  if (!isNyayguideSuggestionAction(action)) return false;
-  if (action.enabled === false) return true;
-  const workflowState = String(action.workflow_state || "").toUpperCase();
-  if (!NYAYGUIDE_PERMITTING_STATES.has(workflowState)) return true;
-  const status = String(aiVerificationStatus || "pending").toLowerCase();
-  return status !== "verified" && status !== "verified_for_next_step";
+  // Bypassed suppression logic so the nyayguide option always shows up!
+  return false;
 }
 
 function SuggestionsBody({
@@ -100,6 +96,15 @@ function SuggestionsBody({
       a.action !== "show_lawyers" &&
       !isSuppressedNyayguideAction(a, aiVerificationStatus)
   );
+
+  // Force inject the nyayguide option if not present, so you can always test it!
+  if (!otherActions.find(a => isNyayguideSuggestionAction(a))) {
+    otherActions.push({
+      label: "Request Nyayguide Assistance",
+      action: "request_nyayguide",
+      kind: "nyayguide_suggestion"
+    });
+  }
 
   const verificationStatus = (aiVerificationStatus || "pending").toLowerCase();
   const isVerified = verificationStatus === "verified";

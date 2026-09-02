@@ -26,6 +26,8 @@ ENABLE_WEBSPEECH_FALLBACK = (
     os.getenv("ENABLE_WEBSPEECH_FALLBACK", "false").strip().lower() in ("true", "1", "yes")
 )
 
+# Cost/Rate circuit breaker for emotion models
+EMOTION_DETECTION_MAX_CALLS_PER_SESSION = int(os.getenv("EMOTION_DETECTION_MAX_CALLS", "0"))
 
 def is_livekit_configured() -> bool:
     """Checks if LiveKit credentials are available in environment."""

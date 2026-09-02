@@ -32,7 +32,7 @@ from backend.voice.tts_service import (
     get_voice_profile_for_risk_flags,
     VoiceProfile,
 )
-from backend.services.emotion_service import advisory_for_turn
+from backend.services.emotion_service import advisory_for_turn, async_advisory_for_turn, dual_source_emotion_model_fn
 
 router = APIRouter(tags=["voice-session"])
 
@@ -85,6 +85,48 @@ def _apply_turn_emotion_advisory(
         consented=consented,
         audio_bytes=audio_bytes,
         duration_seconds=(len(audio_bytes) / 32000.0) if audio_bytes else 0.0,
+    )
+    if not effects:
+        return result
+
+    if isinstance(result.get("voice_profile"), dict):
+        merged_tone = effects.get("tone_adjustment") or {}
+        if merged_tone:
+            result["voice_profile"] = {**result["voice_profile"], **merged_tone}
+
+    annotation = effects.get("moderator_annotation")
+    if annotation and "decision_log" in result.get("state", {}):
+        result["state"]["decision_log"] = list(result["state"]["decision_log"]) + [
+            {
+                "agent": "EmotionAdvisory",
+                "event": "soft_priority_flag" if effects.get("soft_priority_flag") else "annotation",
+                "reason": annotation.get("label"),
+                "signal": annotation.get("signal"),
+                "confidence": annotation.get("confidence"),
+            }
+        ]
+
+    if effects.get("soft_priority_flag"):
+        _audit_emotion_soft_flag(case_id, annotation or {})
+
+    return result
+
+async def _async_apply_turn_emotion_advisory(
+    case_id: str,
+    result: Dict[str, Any],
+    *,
+    consented: bool,
+    audio_bytes: Optional[bytes] = None,
+    transcript_text: str = "",
+) -> Dict[str, Any]:
+    """Applies advisory-only emotion effects to a turn response using async dual-source model."""
+    effects = await async_advisory_for_turn(
+        consented=consented,
+        session_id=case_id,
+        audio_bytes=audio_bytes,
+        duration_seconds=(len(audio_bytes) / 32000.0) if audio_bytes else 0.0,
+        transcript_text=transcript_text,
+        model_fn=dual_source_emotion_model_fn,
     )
     if not effects:
         return result
@@ -287,15 +329,19 @@ async def voice_session_audio_turn(
         language=language,
     )
     consent = emotion_consent or _emotion_consent_by_case.get(case_id, False)
+    
+    emotion_effects = await _async_apply_turn_emotion_advisory(
+        case_id,
+        result,
+        consented=consent,
+        audio_bytes=audio_bytes,
+        transcript_text=result.get("user_transcript", ""),
+    )
+    
     return {
         "status": result.get("status", "success"),
         "case_id": case_id,
-        **_apply_turn_emotion_advisory(
-            case_id,
-            result,
-            consented=consent,
-            audio_bytes=audio_bytes,
-        ),
+        **emotion_effects,
     }
 
 
